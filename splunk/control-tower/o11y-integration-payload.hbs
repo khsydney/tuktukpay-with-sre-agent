@@ -1,0 +1,22 @@
+{
+  "index": "tuktukpay",
+  "sourcetype": "o11y:detector",
+  "source": "tuktukpay-control-tower",
+  "event": {
+    "event": "detector.state_changed",
+    "detector": "{{{detector}}}",
+    "rule": "{{{rule}}}",
+    "severity": "{{severity}}",
+    "status": "{{status}}",
+    "statusExtended": "{{statusExtended}}",
+    "incidentId": "{{incidentId}}",
+    "detectorUrl": "{{{detectorUrl}}}",
+    "messageTitle": "{{{messageTitle}}}",
+    {{#if dimensions.[service.name]}}"service.name": "{{dimensions.[service.name]}}",{{/if}}
+    {{#if dimensions.sf_service}}"sf_service": "{{dimensions.sf_service}}",{{/if}}
+    {{#if dimensions.sf_environment}}"sf_environment": "{{dimensions.sf_environment}}",{{/if}}
+    {{#if dimensions.[k8s.pod.name]}}"k8s.pod.name": "{{dimensions.[k8s.pod.name]}}",{{/if}}
+    {{#if dimensions.[k8s.deployment.name]}}"k8s.deployment.name": "{{dimensions.[k8s.deployment.name]}}",{{/if}}
+    "org_id": "{{{orgId}}}"
+  }
+}

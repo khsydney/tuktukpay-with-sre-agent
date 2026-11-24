@@ -1,0 +1,10 @@
+<dashboard version="1.1" theme="dark" script="tower.js" stylesheet="tower.css" hideEdit="true" hideTitle="true" hideExport="true" hideFilters="true">
+  <label>Control tower</label>
+  <row>
+    <panel>
+      <html>
+        <div id="tower-root"></div>
+      </html>
+    </panel>
+  </row>
+</dashboard>

@@ -1,0 +1,30 @@
+# kind cluster config used by k8s/kind-up.sh: the UI and API NodePorts are published on
+# localhost, so http://localhost:8090 (war room) and :8087 (agent console) work with no
+# `kubectl port-forward` tunnel in between (tunnels die under browser traffic and whenever
+# a pod restarts, which the Kubernetes acts do on purpose).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30090   # chaos-controller (war room)
+        hostPort: 8090
+      - containerPort: 30087   # shopping-agent (agentic checkout console)
+        hostPort: 8087
+      - containerPort: 30080   # checkout-api (payments API, smoke test)
+        hostPort: 8080
+      - containerPort: 30086   # merchant-copilot
+        hostPort: 8086
+      - containerPort: 30088   # wallet-sim
+        hostPort: 8088
+      - containerPort: 30085   # merchant-sim
+        hostPort: 8085
+    # Crash-loop back-off capped at 30s instead of the default 5m: after act6/act7 the pod has
+    # crashed often enough to wait the full 5m, so turning the flag off looked like nothing
+    # happened. With the cap it is back within ~30s, still with no manual restart.
+    # (kind-up.sh applies the same setting to a cluster created before this line existed.)
+    kubeadmConfigPatches:
+      - |
+        kind: KubeletConfiguration
+        crashLoopBackOff:
+          maxContainerRestartPeriod: 30s

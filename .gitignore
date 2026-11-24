@@ -1,0 +1,41 @@
+.env
+node_modules/
+__pycache__/
+*.pyc
+bin/
+obj/
+.terraform/
+terraform.tfstate*
+*.log
+.DS_Store
+.venv/
+.pytest_cache/
+
+# Credentials: never commit
+stack_creds.txt
+ec2_creds.txt
+sre_agent_creds.txt
+sre_agent_mcp_token.txt
+guest_creds.txt
+*.pem
+
+# Local backups and finished experiments
+splunk/ec2/archive/
+splunk/ec2/backup-aitk-agent-*.json
+splunk/ec2/launchpad-backup-*/
+splunk/terraform/detectors-backup-*.json
+splunk/control-tower/dist/
+
+# Brand logos stay local (Splunk/Cisco marks)
+services/*/brand/splunk-logo-white.svg
+services/*/brand/cisco-logo-white.svg
+services/*/brand/favicon.svg
+services/sre-agent/sre_agent/brand/splunk-logo-white.svg
+services/sre-agent/sre_agent/brand/favicon.svg
+
+# Local notes and assistant configuration: never published
+workshop/
+CLAUDE.md
+AGENTS.md
+.claude/
+splunk/sre-app/dist/

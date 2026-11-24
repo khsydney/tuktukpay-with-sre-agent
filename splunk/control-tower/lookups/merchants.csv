@@ -1,0 +1,7 @@
+merchant_id,category,avg_ticket_thb,expected_approval_pct
+thai-airways,flights,4200,90
+lazada-th,electronics,2100,92
+grab,rides,300,94
+cafe-amazon,food,75,96
+centara-hotels,hotels,3700,89
+garena,games,620,91

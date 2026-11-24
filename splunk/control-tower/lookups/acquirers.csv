@@ -1,0 +1,6 @@
+id,name,role,currencies,bin_prefixes
+acq-kbank,KBank,Kasikornbank: best domestic THB approval,THB,457173;457174
+acq-uob,UOB,regional (SG-booked) backup,THB;SGD;USD,
+acq-cimb,CIMB,MYR / IDR cards,MYR;IDR,
+acq-alipayplus,Alipay+,wallets (TrueMoney GCash DANA),THB;IDR;PHP,
+acq-itmx,ITMX,PromptPay QR and bank transfer,THB,

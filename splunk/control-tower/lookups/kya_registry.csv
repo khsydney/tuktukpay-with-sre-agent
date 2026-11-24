@@ -1,0 +1,8 @@
+agent_id,operator,kya_rating,registered,protocol,capabilities
+travelgenie.ai,TravelGenie Pte Ltd,A,true,AMP,flights;hotels
+shopbot.lazada,Lazada Thailand,A,true,AMP,electronics;fashion;groceries
+gemini-shopper,Google,B,true,AP2,electronics;fashion;games
+siam-concierge,Siam Concierge Co.,B,true,AMP,flights;hotels;food
+grab-assistant,Grab,B,true,AMP,food;rides
+dealhunter.app,DealHunter Labs,C,true,TAP,electronics;games
+promo-hunter-bot,unknown,D,false,unverified,

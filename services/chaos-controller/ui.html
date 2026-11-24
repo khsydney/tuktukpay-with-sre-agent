@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TukTukPay War Room Controls</title>
+<link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+<style>
+  @font-face { font-family: "Inter"; font-weight: 400; font-display: swap; src: url("/brand/Inter-Regular.woff2") format("woff2"); }
+  @font-face { font-family: "Inter"; font-weight: 600; font-display: swap; src: url("/brand/Inter-SemiBold.woff2") format("woff2"); }
+  /* Design and colour codes taken from https://www.splunk.com/ (measured 3 Nov 2026): black page fading to deep navy, magenta and
+     orange glow with signal lines at the top, gradient headings, pill buttons, navy cards, white selected tab.
+     Diagram status: white normal, amber slow, hot magenta broken; line style repeats the meaning. */
+  :root {
+    --bg: #000000; --card: #0C1724; --tint: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .2); --text: #FFFFFF; --dim: #D5DCE5; --faint: #A6ADB6; --idle: #6E6F75;
+    --lift: inset 0 1px 0 rgba(255, 255, 255, .22), 0 2px 12px rgba(0, 0, 0, .12), 0 14px 32px rgba(0, 0, 0, .5);
+    --magenta: #CE0070; --hot: #FF0F7B; --amber: #FFAB0F; --blue: #0064DA; --ink: #0C1724;
+    --heading: linear-gradient(90deg, #FFAB0F 5%, #FF712B 40.5%, #FF0F7B 85.5%);
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  h1, h2, h3, p { margin: 0; }
+  :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .aurora { position: absolute; top: 0; left: 0; right: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background: radial-gradient(45% 75% at 67% -12%, rgba(238, 29, 98, .6), transparent 72%), radial-gradient(30% 55% at 60% -14%, rgba(249, 157, 28, .75), transparent 72%), radial-gradient(35% 70% at 100% -5%, rgba(70, 20, 170, .5), transparent 72%);
+    -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent); mask-image: linear-gradient(180deg, #000 45%, transparent); }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  body { position: relative; z-index: 0; margin: 0; font: 400 14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: radial-gradient(55% 900px at 0 100%, rgba(150, 0, 80, .6), transparent 75%) no-repeat, radial-gradient(60% 1000px at 100% 100%, rgba(170, 60, 35, .6), transparent 75%) no-repeat, linear-gradient(180deg, #000 0, #00052A 420px, #000B3F 1100px, #000B3F 100%); min-height: 100vh; color: var(--text); font-variant-numeric: tabular-nums; }
+  a { color: inherit; }
+  .logo { display: block; height: 36px; width: auto; }
+  .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  header { max-width: 1200px; margin: 0 auto; padding: 20px 24px 8px; display: flex; align-items: center; gap: 16px 24px; flex-wrap: wrap; }
+  h1 { width: fit-content; font-size: 32px; font-weight: 600; line-height: 1.2; background: var(--heading); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header p { color: var(--dim); max-width: 64ch; }
+  .traffic { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .state { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; white-space: nowrap; }
+  .state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
+  .traffic.paused .state { color: var(--amber); }
+  .traffic.paused .state::before { background: var(--amber); }
+  main { max-width: 1200px; margin: 0 auto; padding: 0 24px 48px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 20px; font: inherit; font-weight: 600; color: var(--text); background: transparent; border: 1px solid var(--text); border-radius: 24px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn:hover { background: var(--text); color: var(--ink); }
+  .btn.primary { background: var(--magenta); border-color: var(--magenta); color: var(--text); }
+  .btn.primary:hover { background: var(--hot); border-color: var(--hot); color: var(--bg); }
+  .btn:disabled { opacity: .6; cursor: wait; }
+  .banner { display: none; align-items: flex-start; gap: 8px; margin-bottom: 16px; padding: 12px 16px; border: 1px solid var(--amber); border-radius: 16px; background: var(--card); }
+  .banner .i { margin-top: 3px; color: var(--amber); }
+  .banner.err { border-color: var(--hot); }
+  .banner.err .i { color: var(--hot); }
+  .banner.show { display: flex; }
+  section { margin-top: 24px; }
+  .head { min-height: 40px; display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
+  h2 { width: fit-content; font-size: 24px; font-weight: 600; line-height: 1.25; background: var(--heading); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .head .note { color: var(--dim); }
+  .head .note.on { color: var(--text); font-weight: 600; }
+  .head .btn { margin-left: auto; }
+  .empty { padding: 16px 0; color: var(--faint); }
+  /* Run sheet, built like the site's tabs: muted bold names, a white selected tab, and a panel with a gradient dash. */
+  .sheet { margin-top: 8px; padding: 8px; background: var(--tint); border-radius: 24px; box-shadow: var(--lift); backdrop-filter: blur(8px); }
+  .strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(112px, 1fr); overflow-x: auto; }
+  .step { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; padding: 12px; font: inherit; font-weight: 600; line-height: 1.3; color: #B8C0CC; text-align: left; background: transparent; border: 0; border-radius: 12px; cursor: pointer; }
+  .step + .step::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 1px; background: rgba(255, 255, 255, .3); }
+  .step:hover { color: var(--text); background: var(--tint); }
+  .step .no { display: flex; align-items: center; gap: 6px; color: var(--text); margin-bottom: 4px; font-size: 15px; }
+  .step.active .no::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--hot); box-shadow: 0 0 8px var(--hot); }
+  .step[aria-pressed="true"] { background: var(--text); color: var(--ink); }
+  .step[aria-pressed="true"] .no { color: var(--ink); }
+  .step[aria-pressed="true"]::before, .step[aria-pressed="true"] + .step::before { display: none; }
+  .step[aria-pressed="true"]:focus-visible { outline-color: var(--hot); outline-offset: -3px; }
+  .detail { display: flex; align-items: center; gap: 12px 24px; flex-wrap: wrap; margin-top: 4px; padding: 12px 16px 8px; border-top: 1px solid var(--line); }
+  .detail .pic { width: 48px; height: 48px; flex: none; fill: none; stroke: url(#brand-stroke); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .detail .what { flex: 1; min-width: 240px; }
+  .detail .what::before { content: ""; display: block; width: 32px; height: 4px; margin-bottom: 4px; border-radius: 2px; background: linear-gradient(90deg, #FF0F7B, #FF712B); }
+  .detail b { font-size: 22px; font-weight: 600; line-height: 1.25; }
+  .detail .sub { display: block; color: var(--dim); font-size: 15px; }
+  .detail .acts { display: flex; gap: 8px; }
+  .detail .run { min-width: 128px; }
+  /* Failure injections: tiles, so many can be read at once. */
+  #flags { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 8px; }
+  #flags .empty { grid-column: 1 / -1; }
+  .flag { display: flex; flex-direction: column; overflow: hidden; background: var(--tint); border: 1px solid transparent; border-radius: 24px; box-shadow: var(--lift); backdrop-filter: blur(8px); transition: background .15s; }
+  .flag:hover { background: rgba(255, 255, 255, .14); }
+  .flag.on { border-color: var(--hot); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 0 28px rgba(255, 15, 123, .6); }
+  /* Colour band on top of each tile, like the image on the site's cards. */
+  .band { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; padding: 12px 16px; color: var(--text); }
+  .band .i { width: 40px; height: 40px; stroke-width: 1.5; }
+  .b0 { background: radial-gradient(70% 160% at 85% 0, #FF0F7B, transparent 70%), radial-gradient(60% 160% at 45% 120%, #FF712B, transparent 75%), #1A0B3F; }
+  .b1 { background: radial-gradient(70% 170% at 90% 10%, #0064DA, transparent 70%), radial-gradient(55% 150% at 35% 120%, #7A1FD1, transparent 75%), #03102F; }
+  .b2 { background: radial-gradient(70% 170% at 80% -10%, #FFAB0F, transparent 65%), radial-gradient(70% 170% at 25% 130%, #CE0070, transparent 75%), #2B0820; }
+  .b3 { background: radial-gradient(60% 170% at 90% 110%, #FF0F7B, transparent 70%), radial-gradient(70% 170% at 40% -20%, #0064DA, transparent 72%), #08103A; }
+  .tile { display: flex; flex: 1; flex-direction: column; padding: 16px; }
+  .flag h3 { font-size: 17px; font-weight: 600; line-height: 1.3; }
+  .flag .tag { display: none; width: fit-content; margin-top: 8px; padding: 1px 10px; color: var(--text); background: var(--magenta); border-radius: 12px; font-weight: 600; white-space: nowrap; }
+  .flag.on .tag { display: block; }
+  .flag .consumer { color: #B8C0CC; margin-top: 4px; }
+  .flag p { color: var(--dim); margin-top: 8px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+  .flag .params { margin-top: auto; }
+  .flag .rule { margin-top: auto; padding-top: 16px; }
+  .flag .rule .params { padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, .55); }
+  .params { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  .params label { display: block; font-size: 14px; color: #B8C0CC; white-space: nowrap; line-height: 1.3; margin-bottom: 4px; }
+  .params input { width: 100%; min-height: 32px; background: rgba(0, 0, 0, .55); color: var(--text); box-shadow: inset 0 2px 4px rgba(0, 0, 0, .8); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font: 14px var(--mono); }
+  .switch { position: relative; display: block; flex: none; width: 40px; height: 24px; margin-top: 2px; }
+  .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+  .slider { position: absolute; inset: 0; background: rgba(0, 0, 0, .6); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7); border-radius: 12px; transition: background .15s; pointer-events: none; }
+  .slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: var(--text); border-radius: 50%; transition: transform .15s; }
+  .switch input:checked + .slider { background: var(--magenta); box-shadow: inset 0 0 0 1px var(--text); }
+  .switch input:checked + .slider::before { transform: translateX(16px); }
+  .switch input:focus-visible + .slider { outline: 2px solid var(--text); outline-offset: 2px; }
+  .switch input:disabled { cursor: wait; }
+  .log { list-style: none; margin: 8px 0 0; padding: 0; max-height: 240px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); column-gap: 32px; align-content: start; }
+  .log .empty { grid-column: 1 / -1; }
+  .log li { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  .log time { color: var(--faint); font-variant-numeric: tabular-nums; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 16px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; display: flex; gap: 8px; background: var(--text); color: var(--ink); border-radius: 24px; padding: 12px 20px; width: max-content; max-width: 90vw; box-shadow: 0 0 24px rgba(255, 255, 255, .4); }
+  .toast .i { margin-top: 3px; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (max-width: 960px) { .strip { grid-auto-columns: 136px; } }
+  @media (max-width: 600px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .traffic { margin-left: 0; width: 100%; justify-content: space-between; }
+    .detail .acts { width: 100%; }
+    .detail .acts .btn { flex: 1; }
+    .head .btn { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } .slider, .slider::before, .toast { transition: none; } }
+</style>
+</head>
+<body>
+<!-- Icons: Tabler Icons 3.50.0, outline set (MIT licence, copyright 2020-2026 Pawel Kuna, https://tabler.io/icons).
+     Inlined so the page needs no network. To add one, copy its paths from @tabler/icons into a new symbol. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs><linearGradient id="brand-stroke" x1="0" y1="1" x2="1" y2="0"><stop offset="5%" stop-color="#FF0F7B"/><stop offset="60%" stop-color="#FF712B"/><stop offset="95%" stop-color="#FFAB0F"/></linearGradient></defs>
+<symbol id="i-activity-heartbeat" viewBox="0 0 24 24"><path d="M3 12h4.5l1.5 -6l4 12l2 -9l1.5 3h4.5"/></symbol>
+<symbol id="i-arrows-split-2" viewBox="0 0 24 24"><path d="M21 17h-5.397a5 5 0 0 1 -4.096 -2.133l-.514 -.734a5 5 0 0 0 -4.096 -2.133h-3.897"/><path d="M21 7h-5.395a5 5 0 0 0 -4.098 2.135l-.51 .73a5 5 0 0 1 -4.097 2.135h-3.9"/><path d="M18 10l3 -3l-3 -3"/><path d="M18 20l3 -3l-3 -3"/></symbol>
+<symbol id="i-biohazard" viewBox="0 0 24 24"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M11.939 14c0 .173 .048 .351 .056 .533l0 .217a4.75 4.75 0 0 1 -4.533 4.745l-.217 0m-4.75 -4.75a4.75 4.75 0 0 1 7.737 -3.693m6.513 8.443a4.75 4.75 0 0 1 -4.69 -5.503l-.06 0m1.764 -2.944a4.75 4.75 0 0 1 7.731 3.477l0 .217m-11.195 -3.813a4.75 4.75 0 0 1 -1.828 -7.624l.164 -.172m6.718 0a4.75 4.75 0 0 1 -1.665 7.798"/></symbol>
+<symbol id="i-brain" viewBox="0 0 24 24"><path d="M15.5 13a3.5 3.5 0 0 0 -3.5 3.5v1a3.5 3.5 0 0 0 7 0v-1.8"/><path d="M8.5 13a3.5 3.5 0 0 1 3.5 3.5v1a3.5 3.5 0 0 1 -7 0v-1.8"/><path d="M17.5 16a3.5 3.5 0 0 0 0 -7h-.5"/><path d="M19 9.3v-2.8a3.5 3.5 0 0 0 -7 0"/><path d="M6.5 16a3.5 3.5 0 0 1 0 -7h.5"/><path d="M5 9.3v-2.8a3.5 3.5 0 0 1 7 0v10"/></symbol>
+<symbol id="i-building-bank" viewBox="0 0 24 24"><path d="M3 21l18 0"/><path d="M3 10l18 0"/><path d="M5 6l7 -3l7 3"/><path d="M4 10l0 11"/><path d="M20 10l0 11"/><path d="M8 14l0 3"/><path d="M12 14l0 3"/><path d="M16 14l0 3"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><path d="M7 15h-3a1 1 0 0 1 -1 -1v-8a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v3"/><path d="M7 10a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -8"/><path d="M12 14a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/></symbol>
+<symbol id="i-credit-card" viewBox="0 0 24 24"><path d="M3 8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -8"/><path d="M3 10l18 0"/><path d="M7 15l.01 0"/><path d="M11 15l2 0"/></symbol>
+<symbol id="i-database" viewBox="0 0 24 24"><path d="M4 6a8 3 0 1 0 16 0a8 3 0 1 0 -16 0"/><path d="M4 6v6a8 3 0 0 0 16 0v-6"/><path d="M4 12v6a8 3 0 0 0 16 0v-6"/></symbol>
+<symbol id="i-droplet" viewBox="0 0 24 24"><path d="M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546"/></symbol>
+<symbol id="i-file-certificate" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 8v-3a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5"/><path d="M3 14a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M4.5 17l-1.5 5l3 -1.5l3 1.5l-1.5 -5"/></symbol>
+<symbol id="i-id-badge-2" viewBox="0 0 24 24"><path d="M7 12h3v4h-3l0 -4"/><path d="M10 6h-6a1 1 0 0 0 -1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1 -1v-12a1 1 0 0 0 -1 -1h-6"/><path d="M10 4a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -3"/><path d="M14 16h2"/><path d="M14 12h4"/></symbol>
+<symbol id="i-mail-forward" viewBox="0 0 24 24"><path d="M12 18h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v7.5"/><path d="M3 6l9 6l9 -6"/><path d="M15 18h6"/><path d="M18 15l3 3l-3 3"/></symbol>
+<symbol id="i-message-circle-question" viewBox="0 0 24 24"><path d="M15.02 19.52c-2.341 .736 -5 .606 -7.32 -.52l-4.7 1l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c1.649 1.407 2.575 3.253 2.742 5.152"/><path d="M19 22v.01"/><path d="M19 19a2.003 2.003 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483"/></symbol>
+<symbol id="i-package-export" viewBox="0 0 24 24"><path d="M12 21l-8 -4.5v-9l8 -4.5l8 4.5v4.5"/><path d="M12 12l8 -4.5"/><path d="M12 12v9"/><path d="M12 12l-8 -4.5"/><path d="M15 18h7"/><path d="M19 15l3 3l-3 3"/></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"/><path d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"/></symbol>
+<symbol id="i-robot" viewBox="0 0 24 24"><path d="M6 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -4"/><path d="M12 2v2"/><path d="M9 12v9"/><path d="M15 12v9"/><path d="M5 16l4 -2"/><path d="M15 14l4 2"/><path d="M9 18h6"/><path d="M10 8v.01"/><path d="M14 8v.01"/></symbol>
+<symbol id="i-spy" viewBox="0 0 24 24"><path d="M3 11h18"/><path d="M5 11v-4a3 3 0 0 1 3 -3h8a3 3 0 0 1 3 3v4"/><path d="M4 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M14 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M10 17h4"/></symbol>
+<symbol id="i-users-group" viewBox="0 0 24 24"><path d="M10 13a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M8 21v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v1"/><path d="M15 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M17 10h2a2 2 0 0 1 2 2v1"/><path d="M5 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M3 13v-1a2 2 0 0 1 2 -2h2"/></symbol>
+<symbol id="i-alert-triangle" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></symbol>
+<symbol id="i-book-2" viewBox="0 0 24 24"><path d="M19 4v16h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12"/><path d="M19 16h-12a2 2 0 0 0 -2 2"/><path d="M9 8h6"/></symbol>
+<symbol id="i-circle-check" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></symbol>
+<symbol id="i-loader-2" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+<symbol id="i-player-pause" viewBox="0 0 24 24"><path d="M6 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12"/><path d="M14 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12"/></symbol>
+<symbol id="i-player-play" viewBox="0 0 24 24"><path d="M7 4v16l13 -8l-13 -8"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></symbol>
+<symbol id="i-rotate-clockwise" viewBox="0 0 24 24"><path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5"/></symbol>
+</svg>
+<div class="aurora" aria-hidden="true"><svg viewBox="0 0 1440 420" preserveAspectRatio="none" width="100%" height="100%"><rect x="1419" y="0" width="1.5" height="384" fill="#F99D1C" opacity="0.31"/><rect x="1359" y="0" width="1.5" height="204" fill="#F99D1C" opacity="0.45"/><rect x="80" y="0" width="1.5" height="387" fill="#F99D1C" opacity="0.35"/><rect x="1364" y="0" width="1.5" height="256" fill="#EE1D62" opacity="0.50"/><rect x="97" y="0" width="1.5" height="282" fill="#F99D1C" opacity="0.64"/><rect x="1358" y="0" width="1.5" height="339" fill="#F05A22" opacity="0.83"/><rect x="1421" y="0" width="1.5" height="277" fill="#EE1D62" opacity="0.40"/><rect x="1402" y="0" width="1.5" height="311" fill="#F99D1C" opacity="0.40"/><rect x="50" y="0" width="1.5" height="358" fill="#F99D1C" opacity="0.62"/><rect x="60" y="0" width="1.5" height="275" fill="#F05A22" opacity="0.75"/><rect x="1358" y="0" width="1.5" height="181" fill="#F05A22" opacity="0.79"/><rect x="1343" y="0" width="1.5" height="134" fill="#F99D1C" opacity="0.69"/><rect x="1345" y="0" width="1.5" height="267" fill="#F99D1C" opacity="0.82"/><rect x="117" y="0" width="1.5" height="103" fill="#EE1D62" opacity="0.52"/><rect x="39" y="0" width="1.5" height="88" fill="#F99D1C" opacity="0.74"/><rect x="1376" y="0" width="1.5" height="416" fill="#F99D1C" opacity="0.49"/><rect x="1289" y="0" width="1.5" height="14" fill="#F99D1C" opacity="0.38"/><rect x="211" y="0" width="1.5" height="15" fill="#F99D1C" opacity="0.38"/><rect x="1240" y="0" width="1.5" height="23" fill="#F99D1C" opacity="0.39"/><rect x="244" y="0" width="1.5" height="16" fill="#F99D1C" opacity="0.37"/><rect x="772" y="0" width="1.5" height="21" fill="#F99D1C" opacity="0.40"/><rect x="626" y="0" width="1.5" height="22" fill="#F99D1C" opacity="0.48"/><rect x="531" y="0" width="1.5" height="22" fill="#F99D1C" opacity="0.63"/><rect x="1194" y="0" width="1.5" height="19" fill="#F99D1C" opacity="0.47"/><rect x="952" y="0" width="1.5" height="21" fill="#F99D1C" opacity="0.56"/><rect x="406" y="0" width="1.5" height="13" fill="#F99D1C" opacity="0.46"/><rect x="1046" y="0" width="1.5" height="17" fill="#F99D1C" opacity="0.52"/><rect x="1112" y="0" width="1.5" height="10" fill="#F99D1C" opacity="0.55"/><rect x="519" y="0" width="1.5" height="17" fill="#F99D1C" opacity="0.63"/><rect x="418" y="0" width="1.5" height="23" fill="#F99D1C" opacity="0.33"/></svg></div>
+<header>
+  <img class="logo" src="/brand/splunk-logo-white.svg" alt="Splunk by Cisco" onerror="this.remove()">
+  <div>
+    <h1>TukTukPay war room controls</h1>
+    <p>Facilitator panel for the 11.11 workshop. Services read these settings every 2 seconds, so a change takes effect within seconds.</p>
+  </div>
+  <div class="traffic" id="traffic">
+    <span class="state" id="traffic-pill" role="status">Traffic running</span>
+    <button class="btn" id="traffic-btn" onclick="toggleTraffic()" title="Stop or restart the simulated merchant traffic (payments and copilot questions)">Pause traffic</button>
+  </div>
+</header>
+<main>
+  <div class="banner err" id="error" role="alert"></div>
+  <div class="banner" id="traffic-banner"><svg class="i" aria-hidden="true"><use href="#i-player-pause"/></svg><div>Traffic is paused, so nothing new reaches Splunk and the laptop stays mostly idle. <b>Run now</b> on an act resumes traffic automatically. A single failure switch does not, so press <b>Resume traffic</b> for those. The agentic checkout console still works on demand.</div></div>
+
+  <section>
+    <div class="head"><h2>Run sheet</h2><span class="note" id="now"></span></div>
+    <div class="sheet">
+      <div class="strip" id="strip"><div class="empty" style="padding:16px">Loading acts…</div></div>
+      <div class="detail" id="act-detail"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>Failure injections</h2><span class="note" id="status"></span>
+      <button class="btn" id="reset" onclick="resetAll()"><svg class="i" aria-hidden="true"><use href="#i-rotate-clockwise"/></svg>Reset everything to healthy</button>
+    </div>
+    <div id="flags"><div class="empty">Loading failure injections…</div></div>
+  </section>
+
+  <section>
+    <div class="head"><h2>Recent actions</h2></div>
+    <ul class="log" id="history" tabindex="0" aria-label="Recent actions"><li class="empty" style="display:block">Loading…</li></ul>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const icon = (name, cls = '') => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+let defs = {}, state = {}, scenarios = {}, traffic = { paused: false }, running = null, selected = null, shown = null, loaded = false;
+
+// Every call to the controller goes through api(): a failed or hanging request (the laptop just
+// woke up and Docker is re-plumbing localhost, the controller pod is restarting) is reported in
+// the error banner instead of silently freezing the page. 8 s is ~4000× the normal answer time.
+async function api(path, options) {
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const res = await fetch(path, { ...options, signal: ctl.signal });
+    if (!res.ok) throw new Error(`${options && options.method || 'GET'} ${path} -> HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    throw e.name === 'AbortError' ? new Error(`${path} did not answer within 8 s`) : e;
+  } finally { clearTimeout(timer); }
+}
+function toast(msg) {
+  const el = $('toast'); el.innerHTML = icon('circle-check') + `<span>${esc(msg)}</span>`; el.classList.add('show');
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove('show'), 7000);
+}
+function reportError(e) {
+  const el = $('error');
+  el.innerHTML = icon('alert-triangle') + `<div>Controller unreachable (${esc(e.message)}). The page retries every 5 seconds. Your last click may not have been applied.</div>`;
+  el.classList.add('show');
+  console.error(e);
+}
+function clearError() { $('error').classList.remove('show'); }
+
+// Redraw a list without losing keyboard focus: the rows are rebuilt, the ids stay the same.
+function redraw(el, html) {
+  const focused = document.activeElement && document.activeElement.id;
+  el.innerHTML = html;
+  if (focused && el.querySelector(`[id="${focused}"]`)) $(focused).focus();
+}
+
+async function load() {
+  [defs, state, scenarios, { name: running }] = await Promise.all([
+    api('/flags/definitions'), api('/flags'), api('/scenarios'), api('/scenarios/current'),
+  ]);
+  traffic.paused = !!(state.traffic_paused && state.traffic_paused.enabled);
+  loaded = true;
+  renderActs(); renderFlags(); renderTraffic(); loadHistory();
+}
+
+const ACT_ICON = {"baseline": "activity-heartbeat", "act1": "credit-card", "act2": "brain", "act3": "cash", "act4": "robot", "act4b": "id-badge-2", "act5": "message-circle-question", "act6": "droplet", "act7": "package-export"};
+const FLAG_ICON = {"festival_spike": "users-group", "acquirer_kbank_timeout": "building-bank", "risk_model_drift": "brain", "copilot_tool_loop": "repeat", "copilot_prompt_injection": "spy", "agent_traffic_surge": "robot", "agent_mandate_violations": "file-certificate", "catalog_prompt_injection": "biohazard", "kya_registry_down": "id-badge-2", "router_failover_disabled": "arrows-split-2", "ledger_db_slow": "database", "webhook_merchant_flaky": "mail-forward", "ledger_memory_leak": "droplet", "wallet_crash_loop": "package-export"};
+function actInfo(k) {
+  const [head, ...rest] = (scenarios[k] || k).split(' — ');
+  const m = rest.join(' — ').match(/^(.*?)(?:\s*\((.*)\))?$/);
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  return { head, name: cap(m[1]), sub: m[2] ? cap(m[2]) : 'No failures injected' };
+}
+
+// The strip shows every act; the line under it acts on one. Unless someone picked an act,
+// that is the next one in the running order, so the highlighted button is always the next step.
+function renderActs() {
+  const order = Object.keys(scenarios), upNext = order[running ? order.indexOf(running) + 1 : 0];
+  const was = shown;
+  shown = selected && scenarios[selected] ? selected : upNext || running || order[0];
+  redraw($('strip'), order.map(k => {
+    const a = actInfo(k);
+    return `<button class="step ${k === running ? 'active' : ''}" id="step-${k}" aria-pressed="${k === shown}" onclick="selectAct('${k}')"
+      title="${esc(a.sub)}"><span class="no">${esc(a.head)}</span>${esc(a.name)}</button>`;
+  }).join(''));
+  const a = actInfo(shown), on = shown === running;
+  redraw($('act-detail'), `<svg class="pic" aria-hidden="true"><use href="#i-${ACT_ICON[shown] || 'activity-heartbeat'}"/></svg><div class="what"><b>${esc(a.head)}: ${esc(a.name)}</b><span class="sub">${esc(on ? `Running now. ${a.sub}` : a.sub)}</span></div>
+    <div class="acts">
+      <a class="btn" id="guide" href="/act/${shown}" title="Open the picture guide for ${esc(a.head)}">${icon('book-2')}Guide</a>
+      <button class="btn ${on ? '' : 'primary'} run" id="run" onclick="runScenario('${shown}')" title="Start ${esc(a.head)} now without opening the guide">${on ? icon('refresh') + 'Restart' : icon('player-play') + 'Run now'}</button>
+    </div>`);
+  // On a narrow screen, bring the act in focus into view when it changes.
+  if (shown !== was) { const s = $('strip'), c = $(`step-${shown}`); s.scrollLeft = c.offsetLeft - s.offsetLeft - (s.clientWidth - c.offsetWidth) / 2; }
+  $('now').textContent = running ? `${actInfo(running).head} is running` : 'No act running';
+}
+function selectAct(k) { selected = k; renderActs(); }
+
+// The list is built once, then updated in place: nothing a person is clicking or typing in
+// disappears when a switch changes or the 5-second refresh arrives.
+function renderFlags() {
+  const on = Object.keys(defs).filter(k => state[k] && state[k].enabled).length;
+  $('status').textContent = on ? `${on} active` : 'None active';
+  $('status').classList.toggle('on', !!on);
+  if (!$('flags').querySelector('.flag')) {
+    $('flags').innerHTML = Object.entries(defs).map(([name, d], i) => {
+      const params = Object.keys(d.params).map(k =>
+        `<div><label for="p-${name}-${k}">${esc(k)}</label><input id="p-${name}-${k}" data-flag="${name}" data-param="${k}" onchange="setParam(this)"></div>`).join('');
+      return `<div class="flag" id="flag-${name}">
+        <div class="band b${i % 4}">${icon(FLAG_ICON[name] || 'alert-triangle')}
+          <label class="switch"><input type="checkbox" id="sw-${name}" aria-label="${esc(d.title)}" onchange="toggle('${name}', this)"><span class="slider"></span></label>
+        </div>
+        <div class="tile">
+          <h3>${esc(d.title)}</h3><span class="tag">Injected</span>
+          <div class="consumer">Read by ${esc(d.consumer)}</div>
+          <p title="${esc(d.description)}">${esc(d.description)}</p>
+          ${params ? `<div class="rule"><div class="params">${params}</div></div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  for (const [name, d] of Object.entries(defs)) {
+    const s = state[name] || { enabled: false, params: d.params };
+    $(`flag-${name}`).classList.toggle('on', s.enabled);
+    $(`sw-${name}`).checked = s.enabled;
+    for (const [k, v] of Object.entries(s.params)) {
+      const input = $(`p-${name}-${k}`);
+      if (input && input !== document.activeElement) { input.value = v; input.title = v; }
+    }
+  }
+}
+
+function renderTraffic() {
+  $('traffic').classList.toggle('paused', traffic.paused);
+  $('traffic-pill').textContent = traffic.paused ? 'Traffic paused' : 'Traffic running';
+  $('traffic-btn').innerHTML = icon(traffic.paused ? 'player-play' : 'player-pause') + (traffic.paused ? 'Resume traffic' : 'Pause traffic');
+  $('traffic-btn').classList.toggle('primary', traffic.paused);
+  $('traffic-banner').classList.toggle('show', traffic.paused);
+}
+
+const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+
+async function toggleTraffic() {
+  const btn = $('traffic-btn'); btn.disabled = true;
+  try {
+    // ask for the state the server does NOT have (not the inverse of a possibly stale page)
+    const now = await api('/traffic');
+    traffic = await post('/traffic', { paused: !now.paused });
+    clearError();
+  } catch (e) { reportError(e); } finally { btn.disabled = false; }
+  renderTraffic(); loadHistory();
+}
+
+async function toggle(name, input) {
+  const hadFocus = document.activeElement === input;
+  input.disabled = true;
+  try { state[name] = await post(`/flags/${name}`, { enabled: input.checked }); running = null; renderActs(); clearError(); } catch (e) { reportError(e); }
+  input.disabled = false; renderFlags(); loadHistory();
+  if (hadFocus) $(`sw-${name}`).focus();
+}
+
+async function setParam(input) {
+  const name = input.dataset.flag, key = input.dataset.param;
+  let value = input.value; if (!isNaN(value) && value.trim() !== '') value = Number(value);
+  try { state[name] = await post(`/flags/${name}`, { params: { [key]: value } }); running = null; renderActs(); clearError(); } catch (e) { reportError(e); }
+  loadHistory();
+}
+
+async function runScenario(name) {
+  const btn = $('run'), hadFocus = document.activeElement === btn; btn.disabled = true; btn.innerHTML = icon('loader-2', 'spin') + 'Starting';
+  try {
+    const res = await post(`/scenarios/${name}`);
+    state = res.flags; running = name; selected = null; renderFlags(); clearError();
+    traffic.paused = !!(res.traffic && res.traffic.paused); renderTraffic();
+    const head = (res.title || name).split(' — ')[0];
+    toast(res.traffic_resumed
+      ? `${head} started. Traffic was paused, so it was resumed. Payments flow again within seconds.`
+      : `${head} started. Services pick up the change within 2 seconds.`);
+  } catch (e) { reportError(e); }
+  renderActs(); loadHistory();
+  if (hadFocus) $('run').focus();
+}
+
+async function resetAll() {
+  const btn = $('reset'); btn.disabled = true;
+  try { state = await post('/reset'); running = null; clearError(); toast('Everything is back to healthy.'); } catch (e) { reportError(e); }
+  btn.disabled = false; renderFlags(); renderActs(); loadHistory();
+}
+
+function describe(e) {
+  if (e.action === 'scenario') return `Started ${e.scenario}`;
+  if (e.action === 'reset') return 'Reset to healthy';
+  if (e.action === 'traffic') return `Traffic ${e.flag}${e.by ? ` (${e.by})` : ''}`;
+  if (e.action === 'flag') return `${e.flag} ${e.state && e.state.enabled ? 'on' : 'off'}`;
+  return `${e.action} ${e.flag || ''}`;
+}
+async function loadHistory() {
+  try {
+    const h = await api('/history');
+    $('history').innerHTML = h.slice().reverse().map(e => {
+      const t = new Date(e.ts);
+      return `<li><time datetime="${esc(e.ts)}">${esc(isNaN(t) ? e.ts : t.toLocaleTimeString([], { hour12: false }))}</time><span>${esc(describe(e))}</span></li>`;
+    }).join('') || '<li class="empty" style="display:block">No actions yet. Run an act to start.</li>';
+  } catch (e) { reportError(e); }
+}
+
+load().catch(reportError);
+setInterval(async () => {
+  try {
+    if (!loaded) { await load(); clearError(); return; }
+    const flags = await api('/flags'), cur = await api('/scenarios/current');
+    state = flags;
+    traffic.paused = !!(state.traffic_paused && state.traffic_paused.enabled);
+    renderFlags(); renderTraffic(); clearError();
+    if (cur.name !== running) { running = cur.name; renderActs(); }
+  } catch (e) { reportError(e); }
+}, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Override: dual-ship the SAME telemetry to Splunk Observability Cloud AND Datadog.
+#   docker compose -f docker-compose.yml -f docker-compose.dualship.yml up -d
+# Requires DD_API_KEY (and optionally DD_SITE) in .env.
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel/collector-config-dualship.yaml"]
+    environment:
+      DD_API_KEY: ${DD_API_KEY:?set DD_API_KEY in .env for dual-shipping}
+      DD_SITE: ${DD_SITE:-datadoghq.com}
+      SPLUNK_HEC_URL: ${SPLUNK_HEC_URL:-https://ingest.${SPLUNK_REALM}.observability.splunkcloud.com/v1/log}
+      SPLUNK_HEC_TOKEN: ${SPLUNK_HEC_TOKEN:-${SPLUNK_ACCESS_TOKEN}}
+      SPLUNK_HEC_INDEX: ${SPLUNK_HEC_INDEX:-}
+    volumes:
+      - ./otel/collector-config-dualship.yaml:/etc/otel/collector-config-dualship.yaml:ro

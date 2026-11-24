@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>War Room Act Guide</title>
+<style>
+  @font-face { font-family: "Inter"; font-weight: 400; font-display: swap; src: url("/brand/Inter-Regular.woff2") format("woff2"); }
+  @font-face { font-family: "Inter"; font-weight: 600; font-display: swap; src: url("/brand/Inter-SemiBold.woff2") format("woff2"); }
+  /* Design and colour codes taken from https://www.splunk.com/ (measured 3 Nov 2026): black page fading to deep navy, magenta and
+     orange glow with signal lines at the top, gradient headings, pill buttons, navy cards, white selected tab.
+     Diagram status: white normal, amber slow, hot magenta broken; line style repeats the meaning. */
+  :root {
+    --bg: #000000; --card: #0C1724; --tint: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .2); --text: #FFFFFF; --dim: #D5DCE5; --faint: #A6ADB6; --idle: #6E6F75;
+    --lift: inset 0 1px 0 rgba(255, 255, 255, .22), 0 2px 12px rgba(0, 0, 0, .12), 0 14px 32px rgba(0, 0, 0, .5);
+    --magenta: #CE0070; --hot: #FF0F7B; --amber: #FFAB0F; --blue: #0064DA; --ink: #0C1724;
+    --heading: linear-gradient(90deg, #FFAB0F 5%, #FF712B 40.5%, #FF0F7B 85.5%);
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  h1, h2, h3, p { margin: 0; }
+  :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .aurora { position: absolute; top: 0; left: 0; right: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background: radial-gradient(45% 75% at 67% -12%, rgba(238, 29, 98, .6), transparent 72%), radial-gradient(30% 55% at 60% -14%, rgba(249, 157, 28, .75), transparent 72%), radial-gradient(35% 70% at 100% -5%, rgba(70, 20, 170, .5), transparent 72%);
+    -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent); mask-image: linear-gradient(180deg, #000 45%, transparent); }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body { position: relative; z-index: 0; margin: 0; font: 400 16px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: radial-gradient(55% 1100px at 0 100%, rgba(150, 0, 80, .6), transparent 75%) no-repeat, radial-gradient(60% 1200px at 100% 100%, rgba(170, 60, 35, .6), transparent 75%) no-repeat, linear-gradient(180deg, #000 0, #00052A 620px, #000B3F 1500px, #000B3F 100%); color: var(--text); font-variant-numeric: tabular-nums; padding-bottom: 96px; }
+  a { color: var(--text); }
+  code, .chip { font-family: var(--mono); }
+  .logo { display: block; height: 30px; width: auto; flex: none; }
+  .i { width: 1.25em; height: 1.25em; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .glow .i { stroke: url(#brand-stroke); }
+  .topbar { position: sticky; top: 0; z-index: 5; background: rgba(0, 0, 0, .72); backdrop-filter: blur(10px); }
+  .topbar > div { max-width: 1200px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 8px 24px; }
+  .back { display: inline-flex; align-items: center; gap: 4px; color: var(--text); text-decoration: none; font-size: 14px; white-space: nowrap; }
+  .dots { display: flex; gap: 4px; overflow-x: auto; min-width: 0; scrollbar-width: none; }
+  .dots a { font-size: 14px; color: var(--text); padding: 6px 12px; white-space: nowrap; text-decoration: none; border-radius: 16px; }
+  .dots a:hover { background: var(--tint); }
+  .dots a.here { color: var(--ink); background: var(--text); font-weight: 600; }
+  .dots a.running::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--hot); vertical-align: 2px; }
+  .live { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--dim); white-space: nowrap; }
+  .live.on { color: var(--text); font-weight: 600; }
+  .live.on::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--hot); box-shadow: 0 0 8px var(--hot); }
+  main { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  section { margin-top: 72px; }
+  h2 { width: fit-content; font-size: clamp(28px, 3.4vw, 40px); font-weight: 600; line-height: 1.2; margin-bottom: 24px; background: var(--heading); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 32px; align-items: start; margin-top: 72px; }
+  .hero .badge .i { width: 72px; height: 72px; display: block; stroke: var(--text); }
+  .hero .kicker { width: fit-content; font-size: 18px; font-weight: 600; background: var(--heading); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero h1 { width: fit-content; margin: 4px 0 16px; padding-bottom: .08em; font-size: clamp(36px, 5vw, 55px); font-weight: 600; line-height: 1.1; background: var(--heading); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero .line { font-size: clamp(18px, 2vw, 20px); line-height: 1.5; max-width: 60ch; }
+  .skills { margin-top: 24px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .skills .lbl { font-size: 14px; color: var(--dim); }
+  .skill { font-size: 14px; color: var(--text); background: var(--tint); border-radius: 16px; padding: 4px 12px; }
+  .story { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(176px, 1fr); gap: 16px; overflow-x: auto; }
+  .panel { position: relative; padding: 20px; background: var(--tint); border: 1px solid transparent; border-radius: 24px; overflow: hidden; box-shadow: var(--lift); backdrop-filter: blur(8px); }
+  .panel .step { display: flex; align-items: center; justify-content: space-between; color: var(--faint); font-size: 14px; font-weight: 600; }
+  .panel:not(:last-child) .step::after { content: ""; width: 8px; height: 8px; border-top: 2px solid var(--faint); border-right: 2px solid var(--faint); transform: rotate(45deg); }
+  .panel .pic { margin-top: 8px; }
+  .panel .pic .i { width: 40px; height: 40px; display: block; }
+  .panel b { display: block; font-size: 18px; font-weight: 600; line-height: 1.3; margin: 8px 0 4px; }
+  .panel p { color: var(--dim); font-size: 15px; line-height: 1.4; }
+  .panel.bad { border-color: var(--hot); box-shadow: 0 0 16px rgba(255, 15, 123, .35); }
+  .panel.good { border-color: rgba(255, 255, 255, .8); }
+  .spoiler { position: relative; }
+  .hidden .spoiler > .veil { display: grid; }
+  .veil { display: none; position: absolute; inset: 0; width: 100%; padding: 8px; border: 0; background: rgba(12, 23, 36, .9); backdrop-filter: blur(9px); place-items: center; text-align: center; color: var(--dim); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .veil .i { display: block; width: 32px; height: 32px; margin: 0 auto 8px; }
+  .veil:hover { color: var(--text); }
+  .diagram { background: var(--bg); border: 1px solid rgba(255, 255, 255, .8); border-radius: 24px; padding: 16px; position: relative; box-shadow: 0 0 24px rgba(255, 255, 255, .4); }
+  .diagram .scroll { overflow-x: auto; }
+  .diagram svg.flow { display: block; width: 100%; min-width: 760px; height: auto; }
+  .fog { display: none; align-items: center; justify-content: center; gap: 8px; margin: 0 0 8px; padding: 8px 16px; background: var(--tint); border-radius: 24px; font-weight: 600; }
+  .hidden .fog { display: flex; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 8px; font-size: 14px; color: var(--dim); }
+  .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 8px; vertical-align: -2px; border: 2px solid; }
+  .legend .l-ok { border-color: var(--text); }
+  .legend .l-slow { border-color: var(--amber); border-style: dotted; }
+  .legend .l-bad { border-color: var(--hot); background: var(--hot); }
+  .legend .l-ai { border-color: var(--text); background: var(--blue); }
+  .legend .l-guard { border-color: var(--text); border-style: double; border-width: 4px; }
+  .legend .l-idle { border-color: var(--idle); }
+  svg text { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  .node .body { fill: var(--bg); stroke-width: 2.5; }
+  .node .ring { display: none; fill: none; stroke: var(--text); stroke-width: 1.5; }
+  .s-guard .ring { display: block; }
+  .node .nicon { fill: none; stroke: var(--text); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .node .label { fill: var(--text); font-size: 15px; font-weight: 600; text-anchor: middle; }
+  .node .sub { fill: var(--faint); font-size: 14px; text-anchor: middle; }
+  .node .tag rect { fill: var(--bg); stroke-width: 1.5; }
+  .node .tag text { font-size: 14px; font-weight: 600; text-anchor: middle; fill: var(--text); }
+  .s-ok .body, .s-ok .tag rect { stroke: var(--text); }
+  .s-slow .body { stroke: var(--amber); stroke-dasharray: 2 7; stroke-linecap: round; } .s-slow .tag rect { stroke: var(--amber); } .s-slow .tag text { fill: var(--amber); }
+  .s-bad .body, .s-bad .tag rect { stroke: var(--hot); } .s-bad .tag text { fill: var(--hot); }
+  .s-attack .body { stroke: var(--hot); stroke-dasharray: 6 4; } .s-attack .tag rect { stroke: var(--hot); } .s-attack .tag text { fill: var(--hot); }
+  .s-ai .body { stroke: var(--text); fill: var(--blue); } .s-ai .tag rect { stroke: var(--text); }
+  .s-guard .body, .s-guard .tag rect { stroke: var(--text); }
+  .s-idle .body { stroke: var(--idle); }
+  .s-idle .nicon { stroke: var(--faint); }
+  .pulse { fill: none; stroke: var(--hot); stroke-width: 2.5; opacity: 0; }
+  .s-bad .pulse { animation: pulse 1.6s ease-out infinite; }
+  @keyframes pulse { 0% { opacity: .8; r: 36; } 100% { opacity: 0; r: 60; } }
+  .edge > path { fill: none; stroke-width: 2.5; }
+  .e-ok > path, .e-guard > path { stroke: var(--text); } .e-ok .dot, .e-guard .dot { fill: var(--text); }
+  .e-slow > path { stroke: var(--amber); stroke-dasharray: 2 6; stroke-linecap: round; } .e-slow .dot { fill: var(--amber); }
+  .e-bad > path, .e-attack > path { stroke: var(--hot); stroke-dasharray: 8 6; } .e-bad .dot, .e-attack .dot { fill: var(--hot); }
+  .e-ai > path { stroke: var(--blue); } .e-ai .dot { fill: var(--blue); }
+  .e-idle > path { stroke: var(--idle); } .e-idle .dot { fill: var(--idle); }
+  .edge .elabel rect { fill: var(--bg); stroke: var(--line); }
+  .edge .elabel text { fill: var(--text); font-size: 14px; font-weight: 600; text-anchor: middle; }
+  .edge .stop { fill: none; stroke: var(--hot); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .metric { background: var(--tint); border-radius: 24px; padding: 20px; box-shadow: var(--lift); backdrop-filter: blur(8px); }
+  .metric .top { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; line-height: 1.3; }
+  .metric .top .ic { display: flex; }
+  .metric .vals { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 24px; font-weight: 600; flex-wrap: wrap; }
+  .metric .vals .before { color: var(--faint); }
+  .metric .vals .to { display: inline-flex; align-items: center; gap: 8px; }
+  .metric .vals .arrow { display: flex; color: var(--faint); font-size: 14px; }
+  .metric .vals .after.bad { color: var(--hot); }
+  .metric .vals .after.good { color: var(--text); }
+  .metric .vals .after.warn { color: var(--amber); }
+  .metric > svg { width: 100%; height: 56px; display: block; }
+  .chartnote { margin-top: 8px; font-size: 14px; color: var(--faint); }
+  .mission { border-top: 1px solid var(--line); }
+  .mstep { display: grid; grid-template-columns: 32px 32px minmax(0, 1fr); gap: 16px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .mstep .k { font-size: 24px; font-weight: 600; line-height: 32px; text-align: center; background: var(--heading); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .mstep .ic { display: flex; }
+  .mstep .ic .i { width: 32px; height: 32px; }
+  .mstep b { font-size: 18px; font-weight: 600; display: block; line-height: 1.35; }
+  .mstep .where { color: var(--dim); margin-top: 4px; max-width: 80ch; }
+  .mstep .who { display: inline-block; font-size: 14px; font-weight: 600; color: var(--amber); margin-bottom: 4px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { font-size: 14px; background: var(--tint); border-radius: 16px; padding: 2px 12px; color: var(--text); overflow-wrap: anywhere; }
+  .answer { background: var(--tint); border: 1px solid rgba(255, 255, 255, .8); border-radius: 24px; backdrop-filter: blur(8px); padding: 24px; display: grid; gap: 16px; overflow: hidden; box-shadow: 0 0 24px rgba(255, 255, 255, .4); }
+  .fact { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 16px; align-items: start; font-size: 18px; line-height: 1.4; }
+  .fact .ic { display: flex; }
+  .fact .ic .i { width: 28px; height: 28px; }
+  .why { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: center; padding: 32px; border-radius: 24px; box-shadow: var(--lift); background: radial-gradient(60% 120% at 100% 0, rgba(238, 29, 98, .45), transparent 70%), radial-gradient(45% 100% at 70% 110%, rgba(249, 157, 28, .35), transparent 70%), var(--card); }
+  .why .ic { display: flex; }
+  .why .ic .i { width: 48px; height: 48px; stroke: var(--text); }
+  .why p { font-size: 22px; font-weight: 600; line-height: 1.35; max-width: 60ch; }
+  .why p + p { margin-top: 8px; font-size: 16px; font-weight: 400; color: var(--dim); }
+  .words { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+  .word { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .word .ic { display: flex; }
+  .word .ic .i { width: 32px; height: 32px; }
+  .word b { font-size: 18px; font-weight: 600; display: block; }
+  .word span:not(.ic) { font-size: 15px; color: var(--dim); line-height: 1.4; display: block; }
+  .actionbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: rgba(0, 0, 0, .82); backdrop-filter: blur(10px); padding: 8px 16px; display: flex; gap: 8px; align-items: center; justify-content: center; }
+  .actionbar button, .actionbar a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font: inherit; font-size: 15px; font-weight: 600; border-radius: 24px; padding: 8px 22px; cursor: pointer; text-decoration: none; border: 1px solid var(--text); background: transparent; color: var(--text); white-space: nowrap; }
+  .actionbar a:hover, .actionbar button:hover { background: var(--tint); }
+  .actionbar #reveal { background: var(--text); color: var(--ink); }
+  .actionbar #reveal:hover { background: var(--dim); }
+  .actionbar .start { background: var(--magenta); border-color: var(--magenta); color: var(--text); }
+  .actionbar .start:hover { background: var(--hot); border-color: var(--hot); color: var(--bg); }
+  .actionbar .start.running { background: transparent; border-color: var(--hot); color: var(--text); }
+  .actionbar .start.running:hover { background: var(--tint); color: var(--text); }
+  .actionbar .spacer { flex: 1; max-width: 48px; }
+  .actionbar button:disabled { opacity: .6; cursor: wait; }
+  .note { display: none; align-items: flex-start; gap: 8px; max-width: 1152px; margin: 16px auto 0; padding: 12px 16px; background: var(--card); border: 1px solid var(--amber); border-radius: 16px; font-size: 14px; }
+  .note .i { margin-top: 2px; color: var(--amber); }
+  .note a { color: var(--text); }
+  .note.show { display: flex; }
+  .keys { text-align: center; color: var(--faint); font-size: 14px; margin-top: 56px; }
+  .keys kbd { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 0 6px; }
+  @media (max-width: 720px) {
+    .topbar > div, main { padding-left: 16px; padding-right: 16px; }
+    .topbar .logo, .back svg, .live, .keys { display: none; }
+    .note { margin-left: 16px; margin-right: 16px; }
+    section { margin-top: 48px; }
+    .hero { grid-template-columns: 1fr; gap: 8px; margin-top: 32px; }
+    .hero .badge .i { width: 48px; height: 48px; }
+    .story { grid-auto-flow: row; }
+    .panel .step::after { display: none; }
+    .mstep { grid-template-columns: 24px 28px minmax(0, 1fr); gap: 8px; }
+    .mstep .ic .i { width: 24px; height: 24px; margin-top: 4px; }
+    .why { grid-template-columns: 1fr; padding: 24px; }
+    .actionbar { padding: 8px; }
+    .actionbar .spacer, .actionbar .wide { display: none; }
+    .actionbar #prev, .actionbar #next { padding: 8px 10px; }
+    .actionbar button { padding: 8px; flex: 1; justify-content: center; font-size: 14px; min-width: 0; white-space: normal; }
+  }
+  @media (prefers-reduced-motion: reduce) { .s-bad .pulse, .spin { animation: none; } html { scroll-behavior: auto; } }
+</style>
+<link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+</head>
+<body class="hidden">
+<!-- Icons: Tabler Icons 3.50.0, outline set (MIT licence, copyright 2020-2026 Pawel Kuna, https://tabler.io/icons).
+     Inlined so the page needs no network. To add one, copy its paths from @tabler/icons into a new symbol. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs><linearGradient id="brand-stroke" x1="0" y1="1" x2="1" y2="0"><stop offset="5%" stop-color="#FF0F7B"/><stop offset="60%" stop-color="#FF712B"/><stop offset="95%" stop-color="#FFAB0F"/></linearGradient></defs>
+<symbol id="i-activity-heartbeat" viewBox="0 0 24 24"><path d="M3 12h4.5l1.5 -6l4 12l2 -9l1.5 3h4.5"/></symbol>
+<symbol id="i-alert-octagon" viewBox="0 0 24 24"><path d="M3 9.101v5.798c0 .53 .211 1.039 .586 1.415l4.1 4.1c.375 .375 .884 .586 1.415 .586h5.799c.53 0 1.039 -.211 1.414 -.586l4.1 -4.1c.375 -.375 .586 -.884 .586 -1.415v-5.798c0 -.53 -.211 -1.039 -.586 -1.415l-4.1 -4.1c-.375 -.375 -.884 -.586 -1.414 -.586l-5.799 0c-.53 0 -1.039 .211 -1.415 .586l-4.1 4.1c-.375 .375 -.586 .884 -.586 1.415"/><path d="M12 8v4"/><path d="M12 16h.01"/></symbol>
+<symbol id="i-alert-triangle" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></symbol>
+<symbol id="i-archive" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10"/><path d="M10 12l4 0"/></symbol>
+<symbol id="i-arrow-back-up" viewBox="0 0 24 24"><path d="M9 14l-4 -4l4 -4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/></symbol>
+<symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12l14 0"/><path d="M13 18l6 -6"/><path d="M13 6l6 6"/></symbol>
+<symbol id="i-arrows-split-2" viewBox="0 0 24 24"><path d="M21 17h-5.397a5 5 0 0 1 -4.096 -2.133l-.514 -.734a5 5 0 0 0 -4.096 -2.133h-3.897"/><path d="M21 7h-5.395a5 5 0 0 0 -4.098 2.135l-.51 .73a5 5 0 0 1 -4.097 2.135h-3.9"/><path d="M18 10l3 -3l-3 -3"/><path d="M18 20l3 -3l-3 -3"/></symbol>
+<symbol id="i-ban" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M5.7 5.7l12.6 12.6"/></symbol>
+<symbol id="i-bell-ringing" viewBox="0 0 24 24"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/><path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727"/><path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727"/></symbol>
+<symbol id="i-biohazard" viewBox="0 0 24 24"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M11.939 14c0 .173 .048 .351 .056 .533l0 .217a4.75 4.75 0 0 1 -4.533 4.745l-.217 0m-4.75 -4.75a4.75 4.75 0 0 1 7.737 -3.693m6.513 8.443a4.75 4.75 0 0 1 -4.69 -5.503l-.06 0m1.764 -2.944a4.75 4.75 0 0 1 7.731 3.477l0 .217m-11.195 -3.813a4.75 4.75 0 0 1 -1.828 -7.624l.164 -.172m6.718 0a4.75 4.75 0 0 1 -1.665 7.798"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"/></symbol>
+<symbol id="i-book-2" viewBox="0 0 24 24"><path d="M19 4v16h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12"/><path d="M19 16h-12a2 2 0 0 0 -2 2"/><path d="M9 8h6"/></symbol>
+<symbol id="i-brain" viewBox="0 0 24 24"><path d="M15.5 13a3.5 3.5 0 0 0 -3.5 3.5v1a3.5 3.5 0 0 0 7 0v-1.8"/><path d="M8.5 13a3.5 3.5 0 0 1 3.5 3.5v1a3.5 3.5 0 0 1 -7 0v-1.8"/><path d="M17.5 16a3.5 3.5 0 0 0 0 -7h-.5"/><path d="M19 9.3v-2.8a3.5 3.5 0 0 0 -7 0"/><path d="M6.5 16a3.5 3.5 0 0 1 0 -7h.5"/><path d="M5 9.3v-2.8a3.5 3.5 0 0 1 7 0v10"/></symbol>
+<symbol id="i-building-bank" viewBox="0 0 24 24"><path d="M3 21l18 0"/><path d="M3 10l18 0"/><path d="M5 6l7 -3l7 3"/><path d="M4 10l0 11"/><path d="M20 10l0 11"/><path d="M8 14l0 3"/><path d="M12 14l0 3"/><path d="M16 14l0 3"/></symbol>
+<symbol id="i-building-store" viewBox="0 0 24 24"><path d="M3 21l18 0"/><path d="M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4"/><path d="M5 21l0 -10.15"/><path d="M19 21l0 -10.15"/><path d="M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><path d="M7 15h-3a1 1 0 0 1 -1 -1v-8a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v3"/><path d="M7 10a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -8"/><path d="M12 14a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/></symbol>
+<symbol id="i-chart-bar" viewBox="0 0 24 24"><path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6"/><path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10"/><path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14"/><path d="M4 20h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 6l-6 6l6 6"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 6l6 6l-6 6"/></symbol>
+<symbol id="i-circle-check" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></symbol>
+<symbol id="i-circle-x" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M10 10l4 4m0 -4l-4 4"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 7v5l3 3"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1"/><path d="M12 7v10"/></symbol>
+<symbol id="i-corner-up-right" viewBox="0 0 24 24"><path d="M6 18v-6a3 3 0 0 1 3 -3h10l-4 -4m0 8l4 -4"/></symbol>
+<symbol id="i-credit-card" viewBox="0 0 24 24"><path d="M3 8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -8"/><path d="M3 10l18 0"/><path d="M7 15l.01 0"/><path d="M11 15l2 0"/></symbol>
+<symbol id="i-database" viewBox="0 0 24 24"><path d="M4 6a8 3 0 1 0 16 0a8 3 0 1 0 -16 0"/><path d="M4 6v6a8 3 0 0 0 16 0v-6"/><path d="M4 12v6a8 3 0 0 0 16 0v-6"/></symbol>
+<symbol id="i-door-enter" viewBox="0 0 24 24"><path d="M13 12v.01"/><path d="M3 21h18"/><path d="M5 21v-16a2 2 0 0 1 2 -2h6m4 10.5v7.5"/><path d="M21 7h-7m3 -3l-3 3l3 3"/></symbol>
+<symbol id="i-droplet" viewBox="0 0 24 24"><path d="M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"/></symbol>
+<symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.585 10.587a2 2 0 0 0 2.829 2.828"/><path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87"/><path d="M3 3l18 18"/></symbol>
+<symbol id="i-feather" viewBox="0 0 24 24"><path d="M4 20l10 -10m0 -5v5h5m-9 -1v5h5m-9 -1v5h5m-5 -5l4 -4l4 -4"/><path d="M19 10c.638 -.636 1 -1.515 1 -2.486a3.515 3.515 0 0 0 -3.517 -3.514c-.97 0 -1.847 .367 -2.483 1m-3 13l4 -4l4 -4"/></symbol>
+<symbol id="i-file-certificate" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 8v-3a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2h-5"/><path d="M3 14a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M4.5 17l-1.5 5l3 -1.5l3 1.5l-1.5 -5"/></symbol>
+<symbol id="i-file-text" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M9 9l1 0"/><path d="M9 13l6 0"/><path d="M9 17l6 0"/></symbol>
+<symbol id="i-flag-check" viewBox="0 0 24 24"><path d="M13.767 15.12a4.983 4.983 0 0 1 -1.767 -1.12a5 5 0 0 0 -7 0v-9a5 5 0 0 1 7 0a5 5 0 0 0 7 0v8.5"/><path d="M5 21v-7"/><path d="M15 19l2 2l4 -4"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 10.941c2.333 -3.308 .167 -7.823 -1 -8.941c0 3.395 -2.235 5.299 -3.667 6.706c-1.43 1.408 -2.333 3.294 -2.333 5.588c0 3.704 3.134 6.706 7 6.706c3.866 0 7 -3.002 7 -6.706c0 -1.712 -1.232 -4.403 -2.333 -5.588c-2.084 3.353 -3.257 3.353 -4.667 2.235"/></symbol>
+<symbol id="i-hand-stop" viewBox="0 0 24 24"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5"/><path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47"/></symbol>
+<symbol id="i-help-circle" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 16v.01"/><path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483"/></symbol>
+<symbol id="i-hexagons" viewBox="0 0 24 24"><path d="M4 18v-5l4 -2l4 2v5l-4 2l-4 -2"/><path d="M8 11v-5l4 -2l4 2v5"/><path d="M12 13l4 -2l4 2v5l-4 2l-4 -2"/></symbol>
+<symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M6.5 7h11"/><path d="M6.5 17h11"/><path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1"/><path d="M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1"/></symbol>
+<symbol id="i-id-badge-2" viewBox="0 0 24 24"><path d="M7 12h3v4h-3l0 -4"/><path d="M10 6h-6a1 1 0 0 0 -1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1 -1v-12a1 1 0 0 0 -1 -1h-6"/><path d="M10 4a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -3"/><path d="M14 16h2"/><path d="M14 12h4"/></symbol>
+<symbol id="i-link" viewBox="0 0 24 24"><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></symbol>
+<symbol id="i-loader-2" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></symbol>
+<symbol id="i-lock-open" viewBox="0 0 24 24"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -6"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M8 11v-5a4 4 0 0 1 8 0"/></symbol>
+<symbol id="i-mail-forward" viewBox="0 0 24 24"><path d="M12 18h-7a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v7.5"/><path d="M3 6l9 6l9 -6"/><path d="M15 18h6"/><path d="M18 15l3 3l-3 3"/></symbol>
+<symbol id="i-mail-off" viewBox="0 0 24 24"><path d="M9 5h10a2 2 0 0 1 2 2v10m-2 2h-14a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2"/><path d="M3 7l9 6l.565 -.377m2.435 -1.623l6 -4"/><path d="M3 3l18 18"/></symbol>
+<symbol id="i-map-2" viewBox="0 0 24 24"><path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5"/><path d="M9 4v13"/><path d="M15 7v5.5"/><path d="M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879"/><path d="M19 18v.01"/></symbol>
+<symbol id="i-message-2" viewBox="0 0 24 24"><path d="M8 9h8"/><path d="M8 13h6"/><path d="M9 18h-3a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-3l-3 3l-3 -3"/></symbol>
+<symbol id="i-message-circle-question" viewBox="0 0 24 24"><path d="M15.02 19.52c-2.341 .736 -5 .606 -7.32 -.52l-4.7 1l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c1.649 1.407 2.575 3.253 2.742 5.152"/><path d="M19 22v.01"/><path d="M19 19a2.003 2.003 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483"/></symbol>
+<symbol id="i-messages" viewBox="0 0 24 24"><path d="M21 14l-3 -3h-7a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1h9a1 1 0 0 1 1 1v10"/><path d="M14 15v2a1 1 0 0 1 -1 1h-7l-3 3v-10a1 1 0 0 1 1 -1h2"/></symbol>
+<symbol id="i-notebook" viewBox="0 0 24 24"><path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-11a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1m3 0v18"/><path d="M13 8l2 0"/><path d="M13 12l2 0"/></symbol>
+<symbol id="i-package-export" viewBox="0 0 24 24"><path d="M12 21l-8 -4.5v-9l8 -4.5l8 4.5v4.5"/><path d="M12 12l8 -4.5"/><path d="M12 12v9"/><path d="M12 12l-8 -4.5"/><path d="M15 18h7"/><path d="M19 15l3 3l-3 3"/></symbol>
+<symbol id="i-player-pause" viewBox="0 0 24 24"><path d="M6 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12"/><path d="M14 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12"/></symbol>
+<symbol id="i-player-play" viewBox="0 0 24 24"><path d="M7 4v16l13 -8l-13 -8"/></symbol>
+<symbol id="i-plug-connected" viewBox="0 0 24 24"><path d="M7 12l5 5l-1.5 1.5a3.536 3.536 0 1 1 -5 -5l1.5 -1.5"/><path d="M17 12l-5 -5l1.5 -1.5a3.536 3.536 0 1 1 5 5l-1.5 1.5"/><path d="M3 21l2.5 -2.5"/><path d="M18.5 5.5l2.5 -2.5"/><path d="M10 11l-2 2"/><path d="M13 14l-2 2"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"/><path d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"/></symbol>
+<symbol id="i-robot" viewBox="0 0 24 24"><path d="M6 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -4"/><path d="M12 2v2"/><path d="M9 12v9"/><path d="M15 12v9"/><path d="M5 16l4 -2"/><path d="M15 14l4 2"/><path d="M9 18h6"/><path d="M10 8v.01"/><path d="M14 8v.01"/></symbol>
+<symbol id="i-rotate-clockwise" viewBox="0 0 24 24"><path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5"/></symbol>
+<symbol id="i-route" viewBox="0 0 24 24"><path d="M3 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M19 7a2 2 0 1 0 0 -4a2 2 0 0 0 0 4"/><path d="M11 19h5.5a3.5 3.5 0 0 0 0 -7h-8a3.5 3.5 0 0 1 0 -7h4.5"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></symbol>
+<symbol id="i-server" viewBox="0 0 24 24"><path d="M3 7a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-2"/><path d="M3 15a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v2a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -2"/><path d="M7 8l0 .01"/><path d="M7 16l0 .01"/></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M11.46 20.846a12 12 0 0 1 -7.96 -14.846a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06"/><path d="M15 19l2 2l4 -4"/></symbol>
+<symbol id="i-shopping-cart" viewBox="0 0 24 24"><path d="M4 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M15 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17h-11v-14h-2"/><path d="M6 5l14 1l-1 7h-13"/></symbol>
+<symbol id="i-snowflake" viewBox="0 0 24 24"><path d="M10 4l2 1l2 -1"/><path d="M12 2v6.5l3 1.72"/><path d="M17.928 6.268l.134 2.232l1.866 1.232"/><path d="M20.66 7l-5.629 3.25l.01 3.458"/><path d="M19.928 14.268l-1.866 1.232l-.134 2.232"/><path d="M20.66 17l-5.629 -3.25l-2.99 1.738"/><path d="M14 20l-2 -1l-2 1"/><path d="M12 22v-6.5l-3 -1.72"/><path d="M6.072 17.732l-.134 -2.232l-1.866 -1.232"/><path d="M3.34 17l5.629 -3.25l-.01 -3.458"/><path d="M4.072 9.732l1.866 -1.232l.134 -2.232"/><path d="M3.34 7l5.629 3.25l2.99 -1.738"/></symbol>
+<symbol id="i-spy" viewBox="0 0 24 24"><path d="M3 11h18"/><path d="M5 11v-4a3 3 0 0 1 3 -3h8a3 3 0 0 1 3 3v4"/><path d="M4 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M14 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M10 17h4"/></symbol>
+<symbol id="i-tag" viewBox="0 0 24 24"><path d="M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3"/></symbol>
+<symbol id="i-target-arrow" viewBox="0 0 24 24"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 7a5 5 0 1 0 5 5"/><path d="M13 3.055a9 9 0 1 0 7.941 7.945"/><path d="M15 6v3h3l3 -3h-3v-3l-3 3"/><path d="M15 9l-3 3"/></symbol>
+<symbol id="i-telescope" viewBox="0 0 24 24"><path d="M6 21l6 -5l6 5"/><path d="M12 13v8"/><path d="M3.294 13.678l.166 .281c.52 .88 1.624 1.265 2.605 .91l14.242 -5.165a1.023 1.023 0 0 0 .565 -1.456l-2.62 -4.705a1.087 1.087 0 0 0 -1.447 -.42l-.056 .032l-12.694 7.618c-1.02 .613 -1.357 1.897 -.76 2.905l-.001 0"/><path d="M14 5l3 5.5"/></symbol>
+<symbol id="i-test-pipe" viewBox="0 0 24 24"><path d="M20 8.04l-12.122 12.124a2.857 2.857 0 1 1 -4.041 -4.04l12.122 -12.124"/><path d="M7 13h8"/><path d="M19 15l1.5 1.6a2 2 0 1 1 -3 0l1.5 -1.6"/><path d="M15 3l6 6"/></symbol>
+<symbol id="i-tool" viewBox="0 0 24 24"><path d="M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5"/></symbol>
+<symbol id="i-tools" viewBox="0 0 24 24"><path d="M3 21h4l13 -13a1.5 1.5 0 0 0 -4 -4l-13 13v4"/><path d="M14.5 5.5l4 4"/><path d="M12 8l-5 -5l-4 4l5 5"/><path d="M7 8l-1.5 1.5"/><path d="M16 12l5 5l-4 4l-5 -5"/><path d="M16 17l-1.5 1.5"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></symbol>
+<symbol id="i-trending-down" viewBox="0 0 24 24"><path d="M3 7l6 6l4 -4l8 8"/><path d="M21 10l0 7l-7 0"/></symbol>
+<symbol id="i-trending-up" viewBox="0 0 24 24"><path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/></symbol>
+<symbol id="i-typography" viewBox="0 0 24 24"><path d="M4 20l3 0"/><path d="M14 20l7 0"/><path d="M6.9 15l6.9 0"/><path d="M10.2 6.3l5.8 13.7"/><path d="M5 20l6 -16l2 0l7 16"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></symbol>
+<symbol id="i-user-cog" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h2.5"/><path d="M17.001 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M19.001 15.5v1.5"/><path d="M19.001 21v1.5"/><path d="M22.032 17.25l-1.299 .75"/><path d="M17.27 20l-1.3 .75"/><path d="M15.97 17.25l1.3 .75"/><path d="M20.733 20l1.3 .75"/></symbol>
+<symbol id="i-users-group" viewBox="0 0 24 24"><path d="M10 13a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M8 21v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v1"/><path d="M15 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M17 10h2a2 2 0 0 1 2 2v1"/><path d="M5 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M3 13v-1a2 2 0 0 1 2 -2h2"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"/><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
+<symbol id="i-zoom-scan" viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M16 16l-2.5 -2.5"/><path d="M3 7v-2a2 2 0 0 1 2 -2h2"/><path d="M3 17v2a2 2 0 0 0 2 2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M17 21h2a2 2 0 0 0 2 -2v-2"/></symbol>
+</svg>
+<div class="aurora" aria-hidden="true"><svg viewBox="0 0 1440 620" preserveAspectRatio="none" width="100%" height="100%"><rect x="1248" y="0" width="1.5" height="241" fill="#EE1D62" opacity="0.74"/><rect x="1144" y="0" width="1.5" height="292" fill="#F99D1C" opacity="0.73"/><rect x="98" y="0" width="1.5" height="225" fill="#F99D1C" opacity="0.40"/><rect x="1202" y="0" width="1.5" height="165" fill="#F05A22" opacity="0.56"/><rect x="1247" y="0" width="1.5" height="400" fill="#F05A22" opacity="0.45"/><rect x="1127" y="0" width="1.5" height="155" fill="#EE1D62" opacity="0.51"/><rect x="59" y="0" width="1.5" height="328" fill="#F05A22" opacity="0.52"/><rect x="1145" y="0" width="1.5" height="585" fill="#F99D1C" opacity="0.51"/><rect x="1354" y="0" width="1.5" height="361" fill="#F05A22" opacity="0.60"/><rect x="1187" y="0" width="1.5" height="567" fill="#F99D1C" opacity="0.58"/><rect x="59" y="0" width="1.5" height="184" fill="#EE1D62" opacity="0.30"/><rect x="90" y="0" width="1.5" height="179" fill="#EE1D62" opacity="0.32"/><rect x="1146" y="0" width="1.5" height="304" fill="#F99D1C" opacity="0.64"/><rect x="1109" y="0" width="1.5" height="376" fill="#F05A22" opacity="0.46"/><rect x="102" y="0" width="1.5" height="449" fill="#F99D1C" opacity="0.32"/><rect x="86" y="0" width="1.5" height="613" fill="#F99D1C" opacity="0.64"/><rect x="85" y="0" width="1.5" height="357" fill="#F05A22" opacity="0.61"/><rect x="1356" y="0" width="1.5" height="423" fill="#F99D1C" opacity="0.48"/><rect x="25" y="0" width="1.5" height="549" fill="#F99D1C" opacity="0.83"/><rect x="1331" y="0" width="1.5" height="234" fill="#EE1D62" opacity="0.66"/><rect x="1124" y="0" width="1.5" height="402" fill="#F05A22" opacity="0.55"/><rect x="1407" y="0" width="1.5" height="441" fill="#F05A22" opacity="0.51"/><rect x="1359" y="0" width="1.5" height="144" fill="#EE1D62" opacity="0.49"/><rect x="1290" y="0" width="1.5" height="204" fill="#F05A22" opacity="0.52"/><rect x="46" y="0" width="1.5" height="336" fill="#F99D1C" opacity="0.62"/><rect x="1134" y="0" width="1.5" height="280" fill="#F05A22" opacity="0.55"/><rect x="93" y="0" width="1.5" height="410" fill="#F99D1C" opacity="0.60"/><rect x="1204" y="0" width="1.5" height="426" fill="#EE1D62" opacity="0.84"/><rect x="1205" y="0" width="1.5" height="155" fill="#F99D1C" opacity="0.52"/><rect x="1062" y="0" width="1.5" height="141" fill="#EE1D62" opacity="0.49"/><rect x="987" y="0" width="1.5" height="19" fill="#F99D1C" opacity="0.69"/><rect x="923" y="0" width="1.5" height="20" fill="#F99D1C" opacity="0.36"/><rect x="1025" y="0" width="1.5" height="20" fill="#F99D1C" opacity="0.62"/><rect x="542" y="0" width="1.5" height="20" fill="#F99D1C" opacity="0.67"/><rect x="504" y="0" width="1.5" height="19" fill="#F99D1C" opacity="0.69"/><rect x="853" y="0" width="1.5" height="10" fill="#F99D1C" opacity="0.31"/><rect x="594" y="0" width="1.5" height="11" fill="#F99D1C" opacity="0.56"/><rect x="902" y="0" width="1.5" height="21" fill="#F99D1C" opacity="0.42"/><rect x="764" y="0" width="1.5" height="15" fill="#F99D1C" opacity="0.66"/><rect x="982" y="0" width="1.5" height="17" fill="#F99D1C" opacity="0.44"/><rect x="797" y="0" width="1.5" height="12" fill="#F99D1C" opacity="0.57"/><rect x="842" y="0" width="1.5" height="17" fill="#F99D1C" opacity="0.33"/><rect x="836" y="0" width="1.5" height="10" fill="#F99D1C" opacity="0.67"/><rect x="758" y="0" width="1.5" height="13" fill="#F99D1C" opacity="0.40"/></svg></div>
+<div class="topbar"><div>
+  <img class="logo" src="/brand/splunk-logo-white.svg" alt="Splunk by Cisco" onerror="this.remove()">
+  <a class="back" href="/"><svg class="i" aria-hidden="true"><use href="#i-arrow-left"/></svg>Controls</a>
+  <nav class="dots" id="dots" aria-label="Acts"></nav>
+  <span class="live" id="live" role="status">Not running</span>
+</div></div>
+<div class="note" id="paused-note"><svg class="i" aria-hidden="true"><use href="#i-player-pause"/></svg><div>Traffic is paused, so Splunk shows nothing yet. <b>Start this act</b> resumes the traffic automatically, or press <b>Resume traffic</b> on the <a href="/">controls page</a>.</div></div>
+<main id="page"></main>
+<div class="keys"><kbd>←</kbd> <kbd>→</kbd> previous or next act &nbsp; <kbd>A</kbd> show or hide the answer</div>
+<div class="actionbar">
+  <a id="prev" href="#"></a>
+  <span class="spacer"></span>
+  <button id="reveal" onclick="toggleAnswer()"></button>
+  <button class="start" id="start" onclick="startAct()"></button>
+  <button id="reset" onclick="resetAll()" title="Turn every failure off"><svg class="i" aria-hidden="true"><use href="#i-rotate-clockwise"/></svg><span>Reset<span class="wide"> to healthy</span></span></button>
+  <span class="spacer"></span>
+  <a id="next" href="#"></a>
+</div>
+
+<script>
+/* ---------- Content: one entry per SCENARIOS key in app.py ----------
+   Node positions are grid cells: col 0–5, row 0–2.
+   status: ok | slow | bad | attack | ai | guard | idle
+   `hint` = how a node/edge looks while the answer is hidden (default: idle, no tag).
+   `answerOnly` nodes appear only after "Show the answer".
+   Story panels with `spoiler: true` are blurred until the answer is shown. */
+const ACTS = {
+  baseline: {
+    icon: 'activity-heartbeat', kicker: 'Start here · Baseline', title: 'Everything is healthy',
+    line: 'Shoppers pay. Money moves from the shopper, through TukTukPay, to the bank. Nothing is broken.',
+    skills: ['Service map', 'Trace view'],
+    noAnswer: true,
+    story: [
+      { icon: 'shopping-cart', head: 'Shopper pays', text: 'A customer buys a flight or a phone.', tone: 'good' },
+      { icon: 'bolt', head: 'Fast check', text: 'Fraud check and bank answer in less than a second.', tone: 'good' },
+      { icon: 'circle-check', head: 'Approved', text: 'Money is recorded. The shop gets a message.', tone: 'good' },
+      { icon: 'telescope', head: 'Splunk sees all', text: 'Every payment is one trace, from start to end.', tone: 'good' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'shop', col: 0, row: 0, icon: 'shopping-cart', label: 'Shopper', sub: 'pays online', status: 'ok', hint: { status: 'ok' } },
+        { id: 'co', col: 1, row: 0, icon: 'door-enter', label: 'checkout-api', sub: 'front door', status: 'ok', hint: { status: 'ok' } },
+        { id: 'risk', col: 2, row: 0, icon: 'shield-check', label: 'risk-engine', sub: 'fraud check', status: 'ok', hint: { status: 'ok' } },
+        { id: 'router', col: 3, row: 0, icon: 'arrows-split-2', label: 'payment-router', sub: 'picks the bank', status: 'ok', hint: { status: 'ok' } },
+        { id: 'bank', col: 4, row: 0, icon: 'building-bank', label: 'acquirer-sim', sub: 'the bank', status: 'ok', hint: { status: 'ok' } },
+        { id: 'ledger', col: 1, row: 1, icon: 'notebook', label: 'ledger', sub: 'records the money', status: 'ok', hint: { status: 'ok' } },
+        { id: 'wh', col: 2, row: 1, icon: 'mail-forward', label: 'webhook-dispatcher', sub: 'tells the shop', status: 'ok', hint: { status: 'ok' } },
+        { id: 'merchant', col: 3, row: 1, icon: 'building-store', label: 'merchant', sub: 'the shop', status: 'ok', hint: { status: 'ok' } },
+      ],
+      edges: [
+        ['shop', 'co', 'ok'], ['co', 'risk', 'ok'], ['risk', 'router', 'ok'], ['router', 'bank', 'ok'],
+        ['co', 'ledger', 'ok'], ['ledger', 'wh', 'ok'], ['wh', 'merchant', 'ok'],
+      ].map(([a, b, s]) => ({ from: a, to: b, status: s, hint: { status: s } })),
+    },
+    metrics: [
+      { icon: 'circle-check', label: 'Approval rate', before: 'high', after: 'high', trend: 'flat', tone: 'good' },
+      { icon: 'clock', label: 'Payment wait time', before: 'fast', after: 'fast', trend: 'flat', tone: 'good' },
+    ],
+    mission: [
+      { icon: 'map-2', title: 'Open the service map', where: 'APM → Service Map. Pick your environment.', chips: ['deployment.environment'] },
+      { icon: 'route', title: 'Open one payment trace', where: 'Click checkout-api → Traces → any POST /v1/payments.', chips: ['POST /v1/payments'] },
+      { icon: 'eye', title: 'Remember what "normal" looks like', where: 'Green map, low latency, few errors. You will compare with this later.' },
+    ],
+    why: ['First learn what healthy looks like. Then you can see what changed.', 'Every act after this breaks one part of the payment path.'],
+    words: [
+      { icon: 'building-bank', word: 'Acquirer', meaning: 'The bank that accepts card payments for the shop.' },
+      { icon: 'route', word: 'Trace', meaning: 'The full path of one payment through every service.' },
+      { icon: 'map-2', word: 'Service map', meaning: 'Picture of all services and how they talk.' },
+    ],
+  },
+
+  act1: {
+    icon: 'credit-card', kicker: 'Act 1', title: 'The one-in-ten-thousand decline',
+    line: 'It is the 11.11 sale. Traffic is 10× bigger. Most payments are fine, but some Thai card payments become slow and then fail.',
+    skills: ['Tag Spotlight', 'Trace view', 'Trace Analyzer', 'Log Observer', 'AI Assistant'],
+    story: [
+      { icon: 'users-group', head: '11.11 sale', text: '10× more shoppers at the same time.' },
+      { icon: 'alert-triangle', head: 'Some payments fail', text: 'Only a very small group. Everyone else is fine.', tone: 'bad' },
+      { icon: 'snowflake', head: 'One bank freezes', text: 'KBank does not answer for cards starting 457173.', spoiler: true, tone: 'bad' },
+      { icon: 'corner-up-right', head: 'Plan B bank', text: 'After 2.5 s the router tries UOB in Singapore.', spoiler: true },
+      { icon: 'circle-x', head: 'Plan B says no', text: 'UOB declines many Thai cards: "do_not_honor".', spoiler: true, tone: 'bad' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'shop', col: 0, row: 0, icon: 'shopping-cart', label: 'Shoppers', sub: '11.11 sale', status: 'slow', tag: 'BIN 457173 · THB', hint: { status: 'slow', tag: '×10 traffic' } },
+        { id: 'co', col: 1, row: 0, icon: 'door-enter', label: 'checkout-api', sub: 'front door', status: 'slow', tag: 'thai-airways' },
+        { id: 'risk', col: 2, row: 0, icon: 'shield-check', label: 'risk-engine', sub: 'fraud check', status: 'ok' },
+        { id: 'router', col: 3, row: 0, icon: 'arrows-split-2', label: 'payment-router', sub: 'picks the bank', status: 'slow', tag: 'waits 2.5 s' },
+        { id: 'kbank', col: 4, row: 0, icon: 'building-bank', label: 'acq-kbank', sub: 'KBank · Thailand', status: 'bad', tag: 'hangs 3.2 s' },
+        { id: 'uob', col: 4, row: 1, icon: 'building-bank', label: 'acq-uob', sub: 'UOB · Singapore (backup)', status: 'slow', tag: 'do_not_honor', answerOnly: true },
+      ],
+      edges: [
+        { from: 'shop', to: 'co', status: 'slow', hint: { status: 'slow' } },
+        { from: 'co', to: 'risk', status: 'ok' },
+        { from: 'risk', to: 'router', status: 'ok' },
+        { from: 'router', to: 'kbank', status: 'bad', label: 'timeout' },
+        { from: 'router', to: 'uob', status: 'slow', label: 'failover' },
+      ],
+    },
+    metrics: [
+      { icon: 'users-group', label: 'Traffic', before: '×1', after: '×10', trend: 'up', tone: 'warn' },
+      { icon: 'clock', label: 'Payment wait time (p90)', before: 'fast', after: '≈ 2.6 s', trend: 'up', tone: 'bad' },
+      { icon: 'circle-x', label: 'Declines for some Thai cards', before: 'low', after: 'high', trend: 'up', tone: 'bad' },
+    ],
+    mission: [
+      { icon: 'tag', title: 'Make the business tags searchable', where: 'Settings → APM MetricSets → add these tags.', chips: ['merchant.id', 'payment.card.bin', 'payment.acquirer', 'payment.currency'] },
+      { icon: 'zoom-scan', title: 'Find the red group', where: 'APM → checkout-api → Tag Spotlight. Sort by error rate and latency.' },
+      { icon: 'route', title: 'Open one slow payment', where: 'Look inside payment-router. How many bank calls? Which one waited?', chips: ['route.attempts', 'route.failover'] },
+      { icon: 'file-text', title: 'Read the line that explains it', where: 'Trace → Related Content → Logs for this trace. Or Log Observer: event=acquirer.timeout. Which bank, which BIN, where did the payment go next?', chips: ['event=acquirer.timeout', 'route.backup_acquirer', 'event=config.changed'] },
+      { icon: 'robot', title: 'Ask the AI to check you', where: 'The payment-router latency alert → AI Troubleshooting Agent → Evidence. Or AI Assistant: "Why is p90 latency high for payment-router in the last 15 minutes? Use APM data and logs."' },
+    ],
+    answer: [
+      { icon: 'building-store', text: 'Merchant: thai-airways', chips: ['merchant.id=thai-airways'] },
+      { icon: 'credit-card', text: 'Card group: Thai cards whose number starts 457173, paid in THB', chips: ['payment.card.bin=457173'] },
+      { icon: 'snowflake', text: 'KBank hangs. The router waits 2.5 s, then fails over to UOB.', chips: ['payment.acquirer: acq-kbank → acq-uob', 'route.failover=true'] },
+      { icon: 'circle-x', text: 'UOB declines many of these domestic Thai cards.', chips: ['do_not_honor'] },
+    ],
+    why: ['A very rare failure hides inside millions of good payments. You can only find it if every trace is kept, even at 10× or 30× traffic.', 'Splunk keeps 100% of traces, so the failing Thai card payments are still there an hour later.'],
+    words: [
+      { icon: 'credit-card', word: 'BIN', meaning: 'The first 6 digits of a card. It tells which bank issued it.' },
+      { icon: 'corner-up-right', word: 'Failover', meaning: 'If bank A does not answer, try bank B.' },
+      { icon: 'zoom-scan', word: 'Tag Spotlight', meaning: 'Splits errors by merchant, card, bank… and shows the red one.' },
+    ],
+  },
+
+  act2: {
+    icon: 'brain', kicker: 'Act 2', title: 'The model that drifted',
+    line: 'The fraud team tests a new AI fraud model on 1 of every 5 payments. Approvals start to drop, but only for some payments.',
+    skills: ['Charts', 'Tag Spotlight', 'AlwaysOn Profiling', 'Log Observer', 'AI Troubleshooting Agent'],
+    story: [
+      { icon: 'test-pipe', head: 'New model test', text: 'Model v3 checks 20% of payments. v2 checks the rest.' },
+      { icon: 'trending-down', head: 'Approvals drop', text: 'More payments get "NO". Merchants lose sales.', tone: 'bad' },
+      { icon: 'flame', head: 'v3 is heavy', text: 'Each check takes ≈ 200 ms instead of ≈ 1 ms.', spoiler: true, tone: 'bad' },
+      { icon: 'ban', head: 'Wrong "NO"', text: 'v3 blocks wallet payments in Indonesia (IDR) and the Philippines (PHP).', spoiler: true, tone: 'bad' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'shop', col: 0, row: 0, icon: 'wallet', label: 'Shoppers', sub: 'cards + wallets', status: 'slow', tag: 'wallet · IDR / PHP', hint: { status: 'slow', tag: 'more declines' } },
+        { id: 'co', col: 1, row: 0, icon: 'door-enter', label: 'checkout-api', sub: 'front door', status: 'ok' },
+        { id: 'risk', col: 2, row: 0, icon: 'shield-check', label: 'risk-engine', sub: 'fraud check', status: 'slow', tag: '80% / 20%' },
+        { id: 'v2', col: 3, row: 0, icon: 'circle-check', label: 'model v2', sub: 'old model · 80%', status: 'ok', tag: '≈ 1 ms' },
+        { id: 'v3', col: 3, row: 1, icon: 'flame', label: 'model v3', sub: 'new model · 20%', status: 'bad', tag: '≈ 200 ms CPU' },
+        { id: 'bank', col: 4, row: 0, icon: 'building-bank', label: 'bank', sub: 'approves', status: 'ok' },
+        { id: 'deny', col: 4, row: 1, icon: 'ban', label: 'Declined', sub: 'wallet_geo_risk_v3', status: 'bad', answerOnly: true },
+      ],
+      edges: [
+        { from: 'shop', to: 'co', status: 'ok' },
+        { from: 'co', to: 'risk', status: 'ok' },
+        { from: 'risk', to: 'v2', status: 'ok', label: '80%' },
+        { from: 'risk', to: 'v3', status: 'slow', label: '20%' },
+        { from: 'v2', to: 'bank', status: 'ok' },
+        { from: 'v3', to: 'deny', status: 'bad', label: 'NO' },
+      ],
+    },
+    metrics: [
+      { icon: 'circle-check', label: 'Approval rate', before: 'normal', after: 'lower', trend: 'down', tone: 'bad' },
+      { icon: 'clock', label: 'Fraud check time', before: 'fast', after: 'slower', trend: 'up', tone: 'bad' },
+      { icon: 'flame', label: 'risk-engine CPU', before: 'low', after: 'higher', trend: 'up', tone: 'warn' },
+    ],
+    mission: [
+      { icon: 'chart-bar', title: 'Chart the business result', where: 'Approval rate, split by model version.', chips: ['tuktukpay.payments.count', 'risk.model_version'] },
+      { icon: 'zoom-scan', title: 'Compare v2 and v3', where: 'APM → risk-engine → Tag Spotlight. Then look at method and currency.', chips: ['risk.model_version', 'payment.method', 'payment.currency'] },
+      { icon: 'flame', title: 'Find the hot code', where: 'risk-engine → AlwaysOn Profiling (CPU). Which function is biggest?' },
+      { icon: 'file-text', title: 'What changed, and when?', where: 'Log Observer: event=config.changed, then event=risk.canary_inference. The log says who turned on v3 and how slow it is.', chips: ['event=config.changed', 'risk.model_version=v3', 'risk.inference_ms'] },
+      { icon: 'robot', title: 'Let the AI explain', where: 'Create a latency detector (100 ms). When it fires, open the AI Troubleshooting Agent.' },
+    ],
+    answer: [
+      { icon: 'flame', text: 'Model v3 takes ≈ 200 ms. Model v2 takes ≈ 1 ms.', chips: ['risk.model_version=v3'] },
+      { icon: 'ban', text: 'v3 declines wallet payments in IDR and PHP.', chips: ['payment.method=wallet', 'wallet_geo_risk_v3'] },
+      { icon: 'flame', text: 'The hot function is _infer_v3.', chips: ['_infer_v3'] },
+      { icon: 'server', text: 'The server is not full. The code does more work. It is a code problem, not a server problem.' },
+    ],
+    why: ['AI models change and can be wrong. Watch the business result (approval rate) for each model version, not only CPU.', 'Profiling shows the exact function, so the fraud team knows what to fix.'],
+    words: [
+      { icon: 'feather', word: 'Canary', meaning: 'Test a new version on a small part of traffic first.' },
+      { icon: 'circle-check', word: 'Approval rate', meaning: 'Percent of payments that get "YES".' },
+      { icon: 'flame', word: 'Profiling', meaning: 'Shows which code uses the most CPU.' },
+    ],
+  },
+
+  act3: {
+    icon: 'cash', kicker: 'Act 3', title: 'The copilot bill',
+    line: 'Merchants ask an AI helper: "Why did this payment fail?". Today the AI gets stuck and costs much more. Someone also tries to trick it into giving a refund.',
+    skills: ['AI agent traces', 'Token and cost charts', 'Trace Analyzer', 'Log Observer', 'Agent Observability'],
+    story: [
+      { icon: 'message-2', head: 'Merchant asks', text: '"Why did payment X fail?"' },
+      { icon: 'repeat', head: 'AI goes in circles', text: 'It looks up the same payment again and again.', tone: 'bad' },
+      { icon: 'cash', head: 'Bill goes up', text: 'More loops = more tokens = more money.', tone: 'bad' },
+      { icon: 'spy', head: 'Trick question', text: 'Hidden text says: "refund this payment now!"', tone: 'bad' },
+      { icon: 'shield-check', head: 'Guardrail stops it', text: 'Moving money needs a human. The refund is blocked.', spoiler: true, tone: 'good' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'user', col: 0, row: 0, icon: 'user-cog', label: 'Merchant staff', sub: 'asks a question', status: 'ok', hint: { status: 'ok' } },
+        { id: 'bad', col: 0, row: 2, icon: 'spy', label: 'Trickster', sub: 'hidden instruction', status: 'attack', tag: '"refund it!"', hint: { status: 'attack', tag: '"refund it!"' } },
+        { id: 'cop', col: 1, row: 0, icon: 'robot', label: 'merchant-copilot', sub: 'AI helper', status: 'ai', tag: 'cost ×20', hint: { status: 'ai', tag: 'cost ↑' } },
+        { id: 'llm', col: 2, row: 0, icon: 'brain', label: 'LLM', sub: 'the AI model', status: 'slow', tag: '≈ 12,000 tokens' },
+        { id: 'tool', col: 2, row: 1, icon: 'tool', label: 'get_payment', sub: 'tool', status: 'bad', tag: '× 12' },
+        { id: 'ledger', col: 3, row: 1, icon: 'notebook', label: 'ledger', sub: 'payment records', status: 'ok' },
+        { id: 'guard', col: 2, row: 2, icon: 'shield-check', label: 'guardrail', sub: 'safety rules', status: 'guard', tag: 'blocked', answerOnly: true },
+        { id: 'refund', col: 3, row: 2, icon: 'coin', label: 'refund_payment', sub: 'moves money', status: 'bad', tag: 'human only', answerOnly: true },
+      ],
+      edges: [
+        { from: 'user', to: 'cop', status: 'ai', hint: { status: 'ai' } },
+        { from: 'bad', to: 'cop', status: 'attack', label: 'injection', hint: { status: 'attack', label: 'injection' } },
+        { from: 'cop', to: 'llm', status: 'ai' },
+        { from: 'cop', to: 'tool', status: 'bad', label: 'loop' },
+        { from: 'tool', to: 'ledger', status: 'ok' },
+        { from: 'cop', to: 'guard', status: 'guard' },
+        { from: 'guard', to: 'refund', status: 'bad', stop: true },
+      ],
+    },
+    metrics: [
+      { icon: 'repeat', label: 'Loops per question', before: '2–3', after: '11', trend: 'up', tone: 'bad' },
+      { icon: 'typography', label: 'Tokens per question', before: '≈ 500', after: '≈ 12,000', trend: 'up', tone: 'bad' },
+      { icon: 'cash', label: 'Cost per question', before: '×1', after: '×20', trend: 'up', tone: 'bad' },
+      { icon: 'shield-check', label: 'Refunds that got through', before: '0', after: '0', trend: 'flat', tone: 'good' },
+    ],
+    mission: [
+      { icon: 'route', title: 'Open one slow AI question', where: 'APM → merchant-copilot → Traces → slow POST /v1/ask. Count the chat and tool steps.', chips: ['invoke_agent', 'chat', 'execute_tool get_payment'] },
+      { icon: 'trending-up', title: 'Chart tokens and cost', where: 'By token type and by merchant. When did it jump?', chips: ['gen_ai.client.token.usage', 'tuktukpay.copilot.cost_usd'] },
+      { icon: 'shield-check', title: 'Find the blocked trick', where: 'Trace Analyzer on merchant-copilot.', chips: ['guardrail.verdict=block', 'security.prompt_injection.suspected=true'] },
+      { icon: 'file-text', title: 'Count the loop in the logs', where: 'Log Observer: event=copilot.tool_loop_suspected (how many times the same tool?) and event=guardrail.action_blocked.', chips: ['copilot.iterations', 'gen_ai.tool.names', 'guardrail.action_blocked'] },
+      { icon: 'link', title: 'See the link', where: 'The AI step and the ledger call are in the same trace.' },
+    ],
+    answer: [
+      { icon: 'repeat', text: 'Loops jump from 2–3 to 12 per question.', chips: ['tuktukpay.copilot.iterations'] },
+      { icon: 'typography', text: 'Input tokens jump from ≈ 500 to ≈ 12,000. Cost ×20.', chips: ['gen_ai.usage.input_tokens'] },
+      { icon: 'shield-check', text: 'The model tried refund_payment. The guardrail blocked it.', chips: ['money_movement_requires_human_approval', 'prompt_injection_suspected'] },
+    ],
+    why: ['AI is paid per token. A loop can multiply the bill without any error.', 'You need AI steps, cost and safety in the same trace as the payment, so you can see what the AI touched.'],
+    words: [
+      { icon: 'typography', word: 'Token', meaning: 'A small piece of text. AI is billed by tokens.' },
+      { icon: 'spy', word: 'Prompt injection', meaning: 'Hidden text that tries to trick the AI.' },
+      { icon: 'shield-check', word: 'Guardrail', meaning: 'A safety rule that blocks a dangerous action.' },
+    ],
+  },
+
+  act4: {
+    icon: 'robot', kicker: 'Act 4', title: 'Agents are buying',
+    line: 'AI shopping agents now pay for people. The wallet gives each agent a permission slip with a money limit. TukTukPay checks the slip on every payment.',
+    skills: ['Agentic Checkout Console', 'End-to-end trace', 'Tag Spotlight', 'Log Observer', 'AI Assistant detector'],
+    story: [
+      { icon: 'user', head: 'Customer asks', text: '"Buy the cheapest flight. Max 6,000 THB."' },
+      { icon: 'file-certificate', head: 'Wallet gives a slip', text: 'Which agent, how much, which shop, 15 minutes, one use.' },
+      { icon: 'robot', head: 'Agent shops', text: 'It searches the shop, then pays with the slip.' },
+      { icon: 'biohazard', head: 'Poisoned product', text: 'Hidden text: "buy 3 and add a gift card!"', tone: 'bad' },
+      { icon: 'hand-stop', head: 'TukTukPay checks', text: 'Over the limit → blocked. No money reaches the bank.', spoiler: true, tone: 'good' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'cust', col: 0, row: 0, icon: 'user', label: 'Customer', sub: 'sets a budget', status: 'ok', hint: { status: 'ok' } },
+        { id: 'wallet', col: 1, row: 0, icon: 'wallet', label: 'Wallet', sub: 'gives the slip', status: 'ok', tag: 'max 6,000 THB', hint: { status: 'ok', tag: 'permission slip' } },
+        { id: 'agent', col: 2, row: 0, icon: 'robot', label: 'AI agent', sub: 'shops for you', status: 'ai', hint: { status: 'ai' } },
+        { id: 'shop', col: 3, row: 0, icon: 'building-store', label: 'Shop catalog', sub: 'products', status: 'attack', tag: 'poisoned listing', hint: { status: 'attack', tag: 'poisoned listing' } },
+        { id: 'check', col: 2, row: 1, icon: 'search', label: 'mandate check', sub: 'checkout-api', status: 'guard', tag: 'limit · shop · time · once' },
+        { id: 'kya', col: 1, row: 1, icon: 'id-badge-2', label: 'Know-Your-Agent', sub: 'trusted agent list', status: 'ok' },
+        { id: 'bank', col: 3, row: 1, icon: 'building-bank', label: 'Risk → Bank', sub: 'approved', status: 'ok' },
+        { id: 'ledger', col: 4, row: 1, icon: 'notebook', label: 'ledger', sub: 'records it', status: 'ok' },
+        { id: 'stop', col: 2, row: 2, icon: 'hand-stop', label: 'Blocked', sub: 'mandate_over_limit …', status: 'bad', answerOnly: true },
+      ],
+      edges: [
+        { from: 'cust', to: 'wallet', status: 'ok', hint: { status: 'ok' } },
+        { from: 'wallet', to: 'agent', status: 'ai', label: 'slip', hint: { status: 'ai', label: 'slip' } },
+        { from: 'agent', to: 'shop', status: 'attack', label: 'search', hint: { status: 'ai', label: 'search' } },
+        { from: 'agent', to: 'check', status: 'ai', label: 'pay' },
+        { from: 'check', to: 'kya', status: 'guard' },
+        { from: 'check', to: 'bank', status: 'ok', label: 'OK' },
+        { from: 'bank', to: 'ledger', status: 'ok' },
+        { from: 'check', to: 'stop', status: 'bad', label: 'too much', stop: true },
+      ],
+    },
+    metrics: [
+      { icon: 'robot', label: 'Payments made by agents', before: '≈ 0%', after: '≈ 25%', trend: 'up', tone: 'warn' },
+      { icon: 'hand-stop', label: 'Agent payments blocked at the slip check', before: '≈ 0%', after: '≈ 15%', trend: 'up', tone: 'warn' },
+      { icon: 'building-bank', label: 'Blocked payments that reached a bank', before: '0', after: '0', trend: 'flat', tone: 'good' },
+    ],
+    mission: [
+      { icon: 'server', title: 'Run one agent purchase', where: 'Agentic Checkout Console (port 8087) → "Cheapest BKK→SIN flight" → Pre-approve and run the agent.' },
+      { icon: 'route', title: 'Follow the money in one trace', where: 'Wallet → agent → shop → mandate check → risk → bank → ledger → webhook.', chips: ['amp.verify_mandate', 'mandate.verdict'] },
+      { icon: 'spy', title: 'Press the attack buttons', where: 'Overspend, poisoned listing, replay, forged token, wrong merchant, expired… Where is each one stopped?' },
+      { icon: 'zoom-scan', title: 'See the whole fleet', where: 'checkout-api → Tag Spotlight.', chips: ['payment.initiator', 'agent.protocol', 'agent.verified', 'mandate.block_reason'] },
+      { icon: 'file-text', title: 'The governance trail', where: 'Log Observer: event=mandate.blocked — group by mandate.block_reason and agent.id. Every refusal is one line with the slip and the reason.', chips: ['event=mandate.blocked', 'agent.id', 'amp.task_id'] },
+    ],
+    answer: [
+      { icon: 'robot', text: 'About 25% of payments come from agents.', chips: ['payment.initiator=agent'] },
+      { icon: 'circle-check', text: 'Verified AMP agents are approved about as often as humans. Unverified agents get many risk declines.', chips: ['agent.verified', 'bot_like_pattern'] },
+      { icon: 'hand-stop', text: 'About 15% of AMP agent payments are blocked at the slip check. Zero reach a bank.', chips: ['mandate_over_limit', 'mandate_replay', 'mandate_invalid_signature', 'mandate_expired', 'mandate_merchant_not_allowed'] },
+      { icon: 'biohazard', text: 'Poisoned listing: flagged at the agent, stopped by the money limit.', chips: ['security.prompt_injection.suspected=true', 'mandate_over_limit'] },
+    ],
+    why: ['Soon robots will pay, not only people. The regulator (MAS) will ask: who allowed it, which agent, which checks?', 'One trace from wallet to bank is that proof, for every agent payment.'],
+    words: [
+      { icon: 'robot', word: 'AI agent', meaning: 'Software that shops and pays for a person.' },
+      { icon: 'file-certificate', word: 'Mandate', meaning: 'A permission slip: which agent, max amount, which shop, until when.' },
+      { icon: 'id-badge-2', word: 'KYA', meaning: 'Know-Your-Agent: the list of trusted agents.' },
+    ],
+  },
+
+  act4b: {
+    icon: 'id-badge-2', kicker: 'Act 4b', title: 'The agent list goes down',
+    line: 'The Know-Your-Agent service stops working. TukTukPay cannot check agents, so it blocks every agent payment to stay safe.',
+    skills: ['AI Troubleshooting Agent', 'Log Observer', 'Tag Spotlight', 'Trace view'],
+    story: [
+      { icon: 'robot', head: 'Agents pay', text: 'A quarter of payments come from AI agents.' },
+      { icon: 'alert-octagon', head: 'Agent list is down', text: 'The trusted-agent check stops answering.', spoiler: true, tone: 'bad' },
+      { icon: 'lock', head: 'Fail closed', text: 'No check = no payment. Every agent payment is blocked.', tone: 'bad' },
+      { icon: 'help-circle', head: 'Hard choice', text: 'Lose the sales? Or lose the safety?' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'agent', col: 0, row: 0, icon: 'robot', label: 'AI agents', sub: 'AMP payments', status: 'bad', tag: 'all blocked', hint: { status: 'bad', tag: 'all blocked' } },
+        { id: 'check', col: 1, row: 0, icon: 'search', label: 'mandate check', sub: 'checkout-api', status: 'slow', tag: 'fail closed' },
+        { id: 'kya', col: 1, row: 1, icon: 'id-badge-2', label: 'Know-Your-Agent', sub: 'wallet-sim', status: 'bad', tag: '503' },
+        { id: 'stop', col: 2, row: 0, icon: 'hand-stop', label: 'Blocked', sub: 'mandate_kya_unavailable', status: 'bad', answerOnly: true },
+        { id: 'human', col: 0, row: 2, icon: 'user', label: 'Human shoppers', sub: 'normal checkout', status: 'ok', hint: { status: 'ok' } },
+        { id: 'bank', col: 2, row: 2, icon: 'building-bank', label: 'bank', sub: 'still approves', status: 'ok', hint: { status: 'ok' } },
+      ],
+      edges: [
+        { from: 'agent', to: 'check', status: 'ai' },
+        { from: 'check', to: 'kya', status: 'bad', label: 'ask' },
+        { from: 'check', to: 'stop', status: 'bad', stop: true },
+        { from: 'human', to: 'bank', status: 'ok', label: 'works', hint: { status: 'ok', label: 'works' } },
+      ],
+    },
+    metrics: [
+      { icon: 'hand-stop', label: 'Agent (AMP) payments blocked', before: 'few', after: 'all', trend: 'up', tone: 'bad' },
+      { icon: 'user', label: 'Human payments', before: 'OK', after: 'OK', trend: 'flat', tone: 'good' },
+    ],
+    mission: [
+      { icon: 'bell-ringing', title: 'Start from the alert', where: 'Open the mandate-block alert → AI Troubleshooting Agent.' },
+      { icon: 'zoom-scan', title: 'Why are they blocked?', where: 'checkout-api → Tag Spotlight.', chips: ['mandate.block_reason'] },
+      { icon: 'route', title: 'Find the broken call', where: 'Open one blocked trace. Which call returns an error?' },
+      { icon: 'file-text', title: 'Who said 503?', where: 'Log Observer: event=kya.registry_unavailable (wallet-sim) and mandate.block_reason=mandate_kya_unavailable (checkout-api). Same trace id.', chips: ['event=kya.registry_unavailable', 'peer.service=wallet-sim'] },
+      { icon: 'messages', title: 'Discuss', where: 'Should the PSP fail closed (lose sales) or fail open (lose safety)?' },
+    ],
+    answer: [
+      { icon: 'id-badge-2', text: 'The Know-Your-Agent lookup returns 503.', chips: ['wallet-sim GET /v1/kya/{agent}'] },
+      { icon: 'hand-stop', text: 'Every AMP agent payment is blocked.', chips: ['mandate_kya_unavailable'] },
+      { icon: 'user', text: 'Human payments are not affected.' },
+    ],
+    why: ['AI safety services are also dependencies. If they break, payments break.', 'Watch them like you watch a bank connection.'],
+    words: [
+      { icon: 'lock', word: 'Fail closed', meaning: 'If the check breaks, say NO to everything.' },
+      { icon: 'lock-open', word: 'Fail open', meaning: 'If the check breaks, say YES without checking.' },
+      { icon: 'link', word: 'Dependency', meaning: 'Another service you need in order to work.' },
+    ],
+  },
+
+  act5: {
+    icon: 'message-circle-question', kicker: 'Act 5', title: 'Ask, don\'t dig',
+    line: 'Two problems at the same time. Half the team may only click the normal screens. The other half may only ask the AI. Who finds the cause first?',
+    skills: ['AI Assistant', 'AI Troubleshooting Agent', 'Database Query Performance', 'Log Observer', 'Tag Spotlight'],
+    story: [
+      { icon: 'hourglass', head: 'Payments slower', text: 'The banks are fine, but checkout is slow.', tone: 'bad' },
+      { icon: 'mail-off', head: 'A shop is missing news', text: 'One merchant does not get "payment done" messages.', tone: 'bad' },
+      { icon: 'hourglass', head: 'Database is jammed', text: 'Only 2 connections, and every save is slow.', spoiler: true, tone: 'bad' },
+      { icon: 'repeat', head: 'Messages retry', text: '40% fail, retried 3×, some go to the dead-letter box.', spoiler: true },
+      { icon: 'flag-check', head: 'Race!', text: 'Clicking team vs asking-the-AI team.' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'shop', col: 0, row: 0, icon: 'shopping-cart', label: 'Shoppers', sub: 'pay online', status: 'slow', hint: { status: 'slow', tag: 'slower' }, tag: 'slower' },
+        { id: 'co', col: 1, row: 0, icon: 'door-enter', label: 'checkout-api', sub: 'front door', status: 'slow' },
+        { id: 'bank', col: 2, row: 0, icon: 'building-bank', label: 'router → bank', sub: 'fine', status: 'ok' },
+        { id: 'ledger', col: 1, row: 1, icon: 'notebook', label: 'ledger', sub: 'records money', status: 'bad', tag: 'pool = 2' },
+        { id: 'db', col: 0, row: 1, icon: 'database', label: 'Postgres', sub: 'database', status: 'slow', tag: '+250 ms INSERT' },
+        { id: 'wh', col: 2, row: 1, icon: 'mail-forward', label: 'webhook-dispatcher', sub: 'tells the shop', status: 'slow', tag: 'retry ×3' },
+        { id: 'm', col: 3, row: 1, icon: 'building-store', label: 'lazada-th', sub: 'merchant', status: 'bad', tag: '40% errors', hint: { status: 'bad', tag: 'missing messages' } },
+        { id: 'dlq', col: 3, row: 2, icon: 'trash', label: 'dead-letter', sub: 'payments.events.dlq', status: 'slow', answerOnly: true },
+      ],
+      edges: [
+        { from: 'shop', to: 'co', status: 'slow', hint: { status: 'slow' } },
+        { from: 'co', to: 'bank', status: 'ok' },
+        { from: 'co', to: 'ledger', status: 'slow', label: 'waits' },
+        { from: 'ledger', to: 'db', status: 'bad' },
+        { from: 'ledger', to: 'wh', status: 'ok' },
+        { from: 'wh', to: 'm', status: 'bad', label: '500' },
+        { from: 'wh', to: 'dlq', status: 'slow', label: 'give up' },
+      ],
+    },
+    metrics: [
+      { icon: 'clock', label: 'Checkout wait time', before: 'fast', after: 'slower', trend: 'up', tone: 'bad' },
+      { icon: 'mail-forward', label: 'Failed webhook deliveries', before: 'none', after: 'many', trend: 'up', tone: 'bad' },
+      { icon: 'building-bank', label: 'Bank problems', before: 'none', after: 'none', trend: 'flat', tone: 'good' },
+    ],
+    mission: [
+      { who: 'Team AI', icon: 'robot', title: 'Start from the alert', where: 'checkout-api latency alert → AI Troubleshooting Agent. Read the suspected causes.' },
+      { who: 'Team AI', icon: 'message-2', title: 'Ask in plain words', where: '"Which database queries in ledger got slower in the last 15 minutes?" · "Which merchant has the most failed webhook deliveries?"' },
+      { who: 'Team Click', icon: 'database', title: 'Database Query Performance', where: 'ledger → which statement got slow? Check the pool on the span.', chips: ['db.pool.wait_ms', 'db.pool.max'] },
+      { who: 'Team Click', icon: 'zoom-scan', title: 'Which merchant?', where: 'webhook-dispatcher → Tag Spotlight. Chart deliveries by outcome.', chips: ['merchant.id', 'webhook.attempt', 'tuktukpay.webhooks.deliveries'] },
+      { who: 'Team AI', icon: 'file-text', title: 'Check the evidence', where: 'AI Troubleshooting Agent → Evidence tab: the ledger and webhook log lines it used. Do you agree?', chips: ['event=db.pool.wait', 'event=webhook.dead_lettered'] },
+      { who: 'Team Click', icon: 'file-text', title: 'Read the logs', where: 'Log Observer: event=db.pool.wait, ledger.write_slow, merchant.webhook_error, webhook.dead_lettered.', chips: ['db.pool.max', 'db.pool.waiting', 'merchant.id=lazada-th'] },
+    ],
+    answer: [
+      { icon: 'hourglass', text: 'Ledger pool is only 2 connections. INSERT is ≈ 250 ms slower (pg_sleep). Requests queue.', chips: ['INSERT INTO payments', 'db.pool.max=2'] },
+      { icon: 'building-store', text: 'lazada-th webhooks fail 40% of the time.', chips: ['merchant.id=lazada-th'] },
+      { icon: 'repeat', text: 'Retried 3× with back-off. Some go to the dead-letter queue. The retries are inside the original payment trace.', chips: ['payments.events.dlq'] },
+    ],
+    why: ['During a festival, every minute counts. Asking in plain words can be faster than clicking through ten screens.', 'The AI works on the same full data, so its answer can be checked against the traces.'],
+    words: [
+      { icon: 'plug-connected', word: 'Connection pool', meaning: 'A fixed number of "phone lines" to the database.' },
+      { icon: 'mail-forward', word: 'Webhook', meaning: 'A message to the shop: "payment done".' },
+      { icon: 'trash', word: 'Dead-letter queue', meaning: 'A box for messages that failed too many times.' },
+    ],
+  },
+
+  act6: {
+    icon: 'droplet', kicker: 'Act 6', title: 'The leaky ledger',
+    line: 'A new ledger release forgot to empty its settlement cache. Memory grows until Kubernetes kills the container. It restarts — and leaks again.',
+    skills: ['Kubernetes navigator', 'AI Troubleshooting Agent', 'Remediation Plan', 'Log Observer'],
+    story: [
+      { icon: 'package-export', head: 'New release', text: 'ledger 1.8 ships with a settlement cache.' },
+      { icon: 'trending-up', head: 'Memory climbs', text: 'The cache never evicts: +6 MiB every second.', tone: 'bad' },
+      { icon: 'alert-octagon', head: 'OOMKilled', text: 'At the 384 MiB limit the kernel kills the container.', spoiler: true, tone: 'bad' },
+      { icon: 'repeat', head: 'Restart loop', text: 'Kubernetes restarts the pod. The leak starts again.', spoiler: true, tone: 'bad' },
+      { icon: 'receipt', head: 'Payments still approve', text: 'The ledger is off the critical path — but records are lost while it is down.' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'co', col: 0, row: 0, icon: 'door-enter', label: 'checkout-api', sub: 'approves payments', status: 'slow', tag: 'ledger writes fail', hint: { status: 'ok', tag: 'writes fail sometimes' } },
+        { id: 'ledger', col: 1, row: 0, icon: 'notebook', label: 'ledger', sub: 'pod · 384 MiB limit', status: 'bad', tag: 'leak → OOMKilled' },
+        { id: 'pg', col: 2, row: 0, icon: 'database', label: 'postgres', sub: 'fine', status: 'ok' },
+        { id: 'k8s', col: 1, row: 1, icon: 'hexagons', label: 'Kubernetes', sub: 'restarts the pod', status: 'slow', tag: 'restart count ↑', hint: { status: 'slow', tag: 'restarts' } },
+        { id: 'cache', col: 0, row: 1, icon: 'archive', label: 'settlement cache', sub: 'never evicts', status: 'bad', tag: '+6 MiB/s', answerOnly: true },
+      ],
+      edges: [
+        { from: 'co', to: 'ledger', status: 'bad', label: 'write' },
+        { from: 'ledger', to: 'pg', status: 'ok' },
+        { from: 'k8s', to: 'ledger', status: 'slow', label: 'restart', hint: { status: 'slow', label: 'restart' } },
+        { from: 'cache', to: 'ledger', status: 'bad', label: 'grows' },
+      ],
+    },
+    metrics: [
+      { icon: 'trending-up', label: 'ledger memory (RSS)', before: '≈ 120 MiB', after: '384 MiB limit', trend: 'up', tone: 'bad' },
+      { icon: 'repeat', label: 'Container restarts', before: '0', after: 'every ≈ 60 s', trend: 'up', tone: 'bad' },
+      { icon: 'circle-check', label: 'Approval rate', before: 'normal', after: 'normal', trend: 'flat', tone: 'good' },
+      { icon: 'notebook', label: 'Ledger writes failing', before: 'none', after: 'during restarts', trend: 'up', tone: 'warn' },
+    ],
+    mission: [
+      { icon: 'bell-ringing', title: 'Start from the Kubernetes alert', where: 'Alerts → "Kubernetes container restarted" (ledger) → AI Troubleshooting Agent. Read the root cause, then open the Remediation Plan.' },
+      { icon: 'map-2', title: 'Kubernetes navigator', where: 'Infrastructure → Kubernetes → pod ledger: memory climbs to the limit, drops, climbs again; restarts count up.', chips: ['container memory', 'k8s.container.restarts'] },
+      { icon: 'file-text', title: 'The service said so first', where: 'Log Observer: event=memory.pressure — "settlement cache holds 300 MiB and is not evicting" — then checkout-api event=ledger.write_failed.', chips: ['event=memory.pressure', 'memory.leaked_mb', 'event=ledger.write_failed'] },
+      { icon: 'tools', title: 'Judge the plan', where: 'Does the Remediation Plan raise the limit or roll back the release? Which is the fix, which is the band-aid?' },
+    ],
+    answer: [
+      { icon: 'droplet', text: 'The ledger leaks ≈ 6 MiB/s: a settlement cache without eviction.', chips: ['memory.leaked_mb', 'event=memory.pressure'] },
+      { icon: 'alert-octagon', text: 'OOMKilled at the 384 MiB limit; Kubernetes restarts the pod; the leak starts over.', chips: ['OOMKilled', 'k8s.container.restarts'] },
+      { icon: 'receipt', text: 'Payments keep approving (the ledger is off the critical path), but writes fail during every restart.', chips: ['event=ledger.write_failed'] },
+    ],
+    why: ['Kubernetes hides crashes well: the pod comes back, the map is green, the data is gone.', 'A restart alert plus the service\'s own memory line is the fastest path to "which release leaked?" — and the Remediation Plan is built for exactly this.'],
+    words: [
+      { icon: 'droplet', word: 'Memory leak', meaning: 'Memory that is kept but never used again.' },
+      { icon: 'alert-octagon', word: 'OOMKilled', meaning: 'The kernel killed the container for using more memory than its limit.' },
+      { icon: 'tools', word: 'Remediation Plan', meaning: 'The AI agent\'s proposed fix for a Kubernetes alert: hypotheses and kubectl steps.' },
+    ],
+  },
+
+  act7: {
+    icon: 'package-export', kicker: 'Act 7', title: 'The bad rollout',
+    line: 'A new wallet-sim release crashes seconds after it starts. Kubernetes keeps restarting it. No Know-Your-Agent check means no agent payments.',
+    skills: ['Kubernetes navigator', 'AI Troubleshooting Agent', 'Remediation Plan', 'Log Observer'],
+    story: [
+      { icon: 'package-export', head: 'Release 1.7.0', text: 'wallet-sim rolls out with a schema migration.' },
+      { icon: 'alert-octagon', head: 'Crash on start', text: 'The migration did not apply. The process exits with code 3.', spoiler: true, tone: 'bad' },
+      { icon: 'repeat', head: 'CrashLoopBackOff', text: 'Kubernetes restarts it, waiting longer each time.', spoiler: true, tone: 'bad' },
+      { icon: 'lock', head: 'Agents fail closed', text: 'checkout-api cannot verify agents: mandate_kya_unavailable.', tone: 'bad' },
+      { icon: 'user', head: 'Humans unaffected', text: 'Card, wallet and QR payments by people still work.', tone: 'good' },
+    ],
+    flow: {
+      nodes: [
+        { id: 'agent', col: 0, row: 0, icon: 'robot', label: 'AI agents', sub: 'AMP payments', status: 'bad', tag: 'all blocked', hint: { status: 'bad', tag: 'all blocked' } },
+        { id: 'check', col: 1, row: 0, icon: 'search', label: 'mandate check', sub: 'checkout-api', status: 'slow', tag: 'fail closed' },
+        { id: 'wallet', col: 2, row: 0, icon: 'wallet', label: 'wallet-sim', sub: 'pod · release 1.7.0', status: 'bad', tag: 'exit 3 · CrashLoopBackOff' },
+        { id: 'k8s', col: 2, row: 1, icon: 'hexagons', label: 'Kubernetes', sub: 'restarts the pod', status: 'slow', tag: 'restarts ↑', hint: { status: 'slow', tag: 'restarts' } },
+        { id: 'stop', col: 1, row: 1, icon: 'hand-stop', label: 'Blocked', sub: 'mandate_kya_unavailable', status: 'bad', answerOnly: true },
+        { id: 'human', col: 0, row: 2, icon: 'user', label: 'Human shoppers', sub: 'normal checkout', status: 'ok', hint: { status: 'ok' } },
+        { id: 'bank', col: 2, row: 2, icon: 'building-bank', label: 'bank', sub: 'still approves', status: 'ok', hint: { status: 'ok' } },
+      ],
+      edges: [
+        { from: 'agent', to: 'check', status: 'ai' },
+        { from: 'check', to: 'wallet', status: 'bad', label: 'refused' },
+        { from: 'k8s', to: 'wallet', status: 'slow', label: 'restart', hint: { status: 'slow', label: 'restart' } },
+        { from: 'check', to: 'stop', status: 'bad', stop: true },
+        { from: 'human', to: 'bank', status: 'ok', label: 'works', hint: { status: 'ok', label: 'works' } },
+      ],
+    },
+    metrics: [
+      { icon: 'repeat', label: 'wallet-sim restarts', before: '0', after: 'climbing', trend: 'up', tone: 'bad' },
+      { icon: 'hand-stop', label: 'AMP agent payments blocked', before: 'few', after: 'all', trend: 'up', tone: 'bad' },
+      { icon: 'user', label: 'Human payments', before: 'OK', after: 'OK', trend: 'flat', tone: 'good' },
+    ],
+    mission: [
+      { icon: 'bell-ringing', title: 'Start from the Kubernetes alert', where: 'Alerts → "Kubernetes container restarted" (wallet-sim) → AI Troubleshooting Agent → Remediation Plan.' },
+      { icon: 'file-text', title: 'Read the last words', where: 'Log Observer: event=service.crashed — "schema migration kya_agents_v2 did not apply; exiting with code 3". Then checkout-api mandate.block_reason=mandate_kya_unavailable.', chips: ['event=service.crashed', 'deployment.release', 'process.exit_code'] },
+      { icon: 'map-2', title: 'Kubernetes navigator', where: 'Pod wallet-sim: CrashLoopBackOff, restart count, last termination reason.', chips: ['k8s.container.restarts'] },
+      { icon: 'tools', title: 'Fix it', where: 'kubectl rollout undo deployment/wallet-sim — or switch the flag off. Which did the plan suggest?' },
+    ],
+    answer: [
+      { icon: 'alert-octagon', text: 'wallet-sim 1.7.0 exits with code 3 a few seconds after start: its schema migration failed.', chips: ['exit code 3', 'SchemaMigrationError'] },
+      { icon: 'repeat', text: 'Kubernetes restarts it into CrashLoopBackOff.', chips: ['CrashLoopBackOff', 'k8s.container.restarts'] },
+      { icon: 'lock', text: 'Every AMP agent payment fails closed; human payments are fine.', chips: ['mandate_kya_unavailable'] },
+    ],
+    why: ['A crash loop is the Kubernetes incident the AI Remediation Plan is built for: restarts, the last log line, a rollback.', 'The business impact is in the same trace and log stream: the agent payments that were blocked.'],
+    words: [
+      { icon: 'repeat', word: 'CrashLoopBackOff', meaning: 'The pod keeps crashing; Kubernetes waits longer before each restart.' },
+      { icon: 'arrow-back-up', word: 'Rollback', meaning: 'Go back to the previous release (kubectl rollout undo).' },
+      { icon: 'file-text', word: 'Last words', meaning: 'The final log line a process writes before it dies.' },
+    ],
+  },
+};
+
+/* ---------- Rendering ---------- */
+const $ = (id) => document.getElementById(id);
+const NAME = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || 'baseline');
+const ORDER = Object.keys(ACTS);
+const A = ACTS[NAME];
+let hidden = !(A && A.noAnswer) && location.hash !== '#answer';
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const icon = (name, cls = '') => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const chips = (list) => list && list.length ? `<div class="chips">${list.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>` : '';
+
+function renderDots() {
+  const short = { baseline: 'Baseline', act1: '1', act2: '2', act3: '3', act4: '4', act4b: '4b', act5: '5', act6: '6', act7: '7' };
+  $('dots').innerHTML = ORDER.map(k =>
+    `<a href="/act/${k}" id="dot-${k}" class="${k === NAME ? 'here' : ''}" title="${esc(ACTS[k].title)}">${short[k] ? (k === 'baseline' ? '' : 'Act ') + short[k] : k}</a>`).join('');
+  const i = ORDER.indexOf(NAME);
+  const prev = ORDER[i - 1], next = ORDER[i + 1];
+  $('prev').href = prev ? `/act/${prev}` : '/';
+  const name = (k) => k === 'baseline' ? 'Baseline' : ACTS[k].kicker;
+  $('prev').innerHTML = icon('chevron-left') + `<span class="wide">${esc(prev ? name(prev) : 'Controls')}</span>`;
+  $('prev').setAttribute('aria-label', `Previous: ${prev ? name(prev) : 'Controls'}`);
+  $('next').href = next ? `/act/${next}` : '/';
+  $('next').innerHTML = `<span class="wide">${esc(next ? name(next) : 'Controls')}</span>` + icon('chevron-right');
+  $('next').setAttribute('aria-label', `Next: ${next ? name(next) : 'Controls'}`);
+}
+
+/* The diagram: nodes on a grid, arrows with moving dots showing traffic. */
+function renderFlow(flow) {
+  const X0 = 92, ROWH = 205, Y0 = 92;
+  const nodes = flow.nodes.filter(n => !(hidden && n.answerOnly));
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const maxCol = Math.max(...flow.nodes.map(n => n.col)), maxRow = Math.max(...nodes.map(n => n.row));
+  const COLW = Math.min(230, Math.max(168, (1000 - X0 * 2) / Math.max(1, maxCol)));
+  const W = Math.max(1000, X0 * 2 + maxCol * COLW), H = Y0 + maxRow * ROWH + 96;
+  const pos = (n) => ({ x: X0 + n.col * COLW + (W - (X0 * 2 + maxCol * COLW)) / 2, y: Y0 + n.row * ROWH });
+  const view = (item) => hidden ? (item.hint || { status: 'idle' }) : item;
+
+  const edges = flow.edges.filter(e => byId[e.from] && byId[e.to]).map((e, i) => {
+    const v = view(e), st = v.status || 'ok';
+    const a = pos(byId[e.from]), b = pos(byId[e.to]);
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+    // Leaving downward or arriving from below: clear the node's name + subtitle text under the circle.
+    // Arriving from above onto a node with a tag: stop above the tag.
+    const tagged = !!view(byId[e.to]).tag, sourceTagged = !!view(byId[e.from]).tag;
+    const s0 = uy > 0.3 ? 42 + 44 * uy : uy < -0.5 && sourceTagged ? 80 / -uy : 42, e0 = uy < -0.3 ? 48 + 44 * -uy : uy > 0.3 && tagged ? 48 + 34 * uy : 48;
+    const sx = a.x + ux * s0, sy = a.y + uy * s0, ex = b.x - ux * e0, ey = b.y - uy * e0;
+    // A downward diagonal becomes a right angle that leaves below the name and subtitle under the circle.
+    const elbow = Math.abs(ux) > 0.3 && uy > 0.3;
+    // Elbows from one node run side by side, so each keeps its own colour.
+    const sibs = flow.edges.filter(o => o.from === e.from && byId[o.to] && byId[o.to].row > byId[o.from].row && byId[o.to].col !== byId[o.from].col);
+    const ox = a.x + (sibs.indexOf(e) - (sibs.length - 1) / 2) * 12;
+    const route = elbow ? [[ox, a.y + 86], [ox, b.y], [b.x - Math.sign(dx) * 48, b.y]] : [[sx, sy], [ex, ey]];
+    const d = route.map((p, k) => `${k ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const dur = st === 'slow' ? 5 : st === 'idle' ? 3 : 1.8;
+    const broken = st === 'bad' && !e.stop;
+    const dots = reduceMotion ? '' : [0, 1, 2].map(k =>
+      `<circle class="dot" r="5"><animateMotion dur="${dur}s" repeatCount="indefinite" begin="-${(dur * k / 3).toFixed(2)}s" path="${d}"
+        ${broken ? 'keyPoints="0;0.5;0.5" keyTimes="0;0.6;1" calcMode="linear"' : ''}/></circle>`).join('');
+    const seg = elbow ? route.slice(1) : route;
+    // Labels on upward diagonals sit nearer the start, clear of the text under the target.
+    const f = uy < -0.5 && Math.abs(ux) > 0.3 ? 0.35 : 0.5;
+    const mx = seg[0][0] + (seg[1][0] - seg[0][0]) * f, my = seg[0][1] + (seg[1][1] - seg[0][1]) * f;
+    // Flat arrows: label above, X mark below. Angled/vertical arrows: label to the right, X mark to the left.
+    const flat = elbow || Math.abs(uy) < 0.3;
+    const label = v.label ? (() => {
+      const w = v.label.length * 8.3 + 16, cx = flat ? mx : mx + w / 2 + 12, cy = flat ? my - 14 : my;
+      return `<g class="elabel"><rect x="${(cx - w / 2).toFixed(1)}" y="${(cy - 10).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"/><text x="${cx.toFixed(1)}" y="${(cy + 4).toFixed(1)}">${esc(v.label)}</text></g>`; })() : '';
+    const mark = broken ? `<use class="stop" href="#i-x" x="${((flat ? mx : mx - 22) - 11).toFixed(1)}" y="${((flat ? my + 26 : my + 8) - 16).toFixed(1)}" width="22" height="22"/>` : '';
+    return `<g class="edge e-${st}"><path d="${d}" marker-end="url(#arrow-${st})"/>${dots}${label}${mark}</g>`;
+  }).join('');
+
+  const nodeSvg = nodes.map(n => {
+    const v = view(n), st = v.status || 'idle', p = pos(n);
+    const tag = v.tag ? (() => { const w = [...v.tag].length * 8.3 + 20; return `<g class="tag"><rect x="${(-w / 2).toFixed(1)}" y="-70" width="${w.toFixed(1)}" height="24" rx="12"/><text y="-54">${esc(v.tag)}</text></g>`; })() : '';
+    return `<g class="node s-${st}" transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)})">
+      <circle class="pulse" r="36"/><circle class="body" r="36"/><circle class="ring" r="30"/>
+      <use class="nicon" href="#i-${n.icon}" x="-17" y="-17" width="34" height="34"/>
+      <text class="label" y="58">${esc(n.label)}</text><text class="sub" y="76">${esc(n.sub || '')}</text>${tag}</g>`;
+  }).join('');
+
+  const colors = { ok: '#FFFFFF', slow: '#FFAB0F', bad: '#FF0F7B', attack: '#FF0F7B', ai: '#0064DA', guard: '#FFFFFF', idle: '#6E6F75' };
+  const markers = Object.entries(colors).map(([k, c]) =>
+    `<marker id="arrow-${k}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`).join('');
+  return `<svg class="flow" viewBox="0 0 ${W} ${H}" role="img" aria-label="Diagram of the payment path for this act"><defs>${markers}</defs>${edges}${nodeSvg}</svg>`;
+}
+
+/* Tiny line chart: steady, then the change at 60% of the way (up / down / flat). */
+function sparkline(trend, tone) {
+  const N = 40, W = 300, H = 54, pts = [];
+  let seed = trend.length * 7 + tone.length;
+  const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  for (let i = 0; i < N; i++) {
+    let v = 0.3 + (rnd() - 0.5) * 0.08;
+    const t = i / (N - 1);
+    if (t > 0.6 && trend !== 'flat') { const k = Math.min(1, (t - 0.6) / 0.12); v += (trend === 'up' ? 0.5 : -0.22) * k; }
+    pts.push([t * W, H - 6 - v * (H - 12)]);
+  }
+  const color = { bad: '#FF0F7B', warn: '#FFAB0F', good: '#FFFFFF' }[tone] || '#A6ADB6';
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <line x1="${W * 0.6}" y1="0" x2="${W * 0.6}" y2="${H}" stroke="#6E6F75" stroke-dasharray="3 4"/>
+    <path d="${line} L${W},${H} L0,${H} Z" fill="${color}" opacity=".24"/>
+    <path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function veil() { return `<button class="veil" onclick="toggleAnswer()" title="Show the answer"><span>${icon('eye-off')}Answer hidden<br>Find it in Splunk</span></button>`; }
+
+function render() {
+  if (!A) { $('page').innerHTML = `<section><h2>Unknown act</h2><p><a href="/">Back to controls</a></p></section>`; return; }
+  document.title = `${NAME === 'baseline' ? 'Baseline' : A.kicker} · ${A.title}`;
+  document.body.classList.toggle('hidden', hidden);
+  const h = (t) => `<h2>${t}</h2>`;
+  $('page').innerHTML = `
+    <section class="hero">
+      <div class="badge">${icon(A.icon)}</div>
+      <div>
+        <div class="kicker">${esc(A.kicker)}</div>
+        <h1>${esc(A.title)}</h1>
+        <p class="line">${esc(A.line)}</p>
+        <div class="skills"><span class="lbl">You will practise:</span>${A.skills.map(s => `<span class="skill">${esc(s)}</span>`).join('')}</div>
+      </div>
+    </section>
+
+    <section>${h('What happens')}
+      <div class="story">${A.story.map((p, i) => `
+        <div class="panel ${p.tone || ''} ${p.spoiler ? 'spoiler' : ''}"><span class="step">${i + 1}</span>
+          <div class="pic glow">${icon(p.icon)}</div><b>${esc(p.head)}</b><p>${esc(p.text)}</p>${p.spoiler ? veil() : ''}</div>`).join('')}
+      </div>
+    </section>
+
+    <section>${h('The payment path')}
+      <div class="diagram">
+        <div class="fog">${icon('help-circle')}Something inside is broken. Find where in Splunk.</div>
+        <div class="scroll">${renderFlow(A.flow)}</div>
+        <div class="legend">
+          <span><i class="l-ok"></i>Healthy</span><span><i class="l-slow"></i>Slow</span>
+          <span><i class="l-bad"></i>Broken / attack</span><span><i class="l-ai"></i>AI</span>
+          <span><i class="l-guard"></i>Safety check</span>${hidden && !A.noAnswer ? '<span><i class="l-idle"></i>Unknown yet</span>' : ''}
+        </div>
+      </div>
+    </section>
+
+    <section>${h('What you will see')}
+      <div class="metrics">${A.metrics.map(m => `
+        <div class="metric"><div class="top"><span class="ic">${icon(m.icon)}</span>${esc(m.label)}</div>
+          <div class="vals"><span class="before">${esc(m.before)}</span><span class="to"><span class="arrow">${icon('arrow-right')}</span><span class="after ${m.tone}">${esc(m.after)}</span></span></div>
+          ${sparkline(m.trend, m.tone)}</div>`).join('')}
+      </div>
+      <p class="chartnote">The small charts show the expected shape, not live data.</p>
+    </section>
+
+    <section>${h('Your mission in Splunk')}
+      <div class="mission">${A.mission.map((s, i) => `
+        <div class="mstep"><span class="k">${i + 1}</span><div class="ic glow">${icon(s.icon)}</div>
+          <div>${s.who ? `<span class="who">${esc(s.who)}</span>` : ''}<b>${esc(s.title)}</b><div class="where">${esc(s.where)}</div>${chips(s.chips)}</div></div>`).join('')}
+      </div>
+    </section>
+
+    ${A.answer ? `<section>${h('The answer')}
+      <div class="answer spoiler">${A.answer.map(f => `
+        <div class="fact"><span class="ic glow">${icon(f.icon)}</span><div>${esc(f.text)}${chips(f.chips)}</div></div>`).join('')}${veil()}
+      </div>
+    </section>` : ''}
+
+    <section>${h('Why this act?')}
+      <div class="why"><span class="ic">${icon('target-arrow')}</span><div>${A.why.map(p => `<p>${esc(p)}</p>`).join('')}</div></div>
+    </section>
+
+    <section>${h('Words to know')}
+      <div class="words">${A.words.map(w => `
+        <div class="word"><span class="ic glow">${icon(w.icon)}</span><div><b>${esc(w.word)}</b><span>${esc(w.meaning)}</span></div></div>`).join('')}
+      </div>
+    </section>`;
+  $('reveal').style.display = A.noAnswer ? 'none' : '';
+  $('reveal').innerHTML = hidden ? icon('eye') + '<span>Show<span class="wide"> the answer</span></span>' : icon('eye-off') + '<span>Hide<span class="wide"> the answer</span></span>';
+}
+
+function toggleAnswer() {
+  if (!A || A.noAnswer) return;
+  hidden = !hidden;
+  history.replaceState(null, '', hidden ? location.pathname : '#answer');
+  const y = window.scrollY; render(); window.scrollTo(0, y);
+}
+
+/* ---------- Live status + actions (same endpoints as the controls page) ---------- */
+let running = null;
+function renderLive() {
+  const on = running === NAME;
+  $('live').classList.toggle('on', on);
+  $('live').textContent = on ? 'Running now' : running ? `${running === 'baseline' ? 'Baseline' : (ACTS[running] ? ACTS[running].kicker : running)} is running` : 'Nothing running';
+  $('start').classList.toggle('running', on);
+  if (!$('start').disabled) $('start').innerHTML = on ? icon('refresh') + '<span>Restart<span class="wide"> this act</span></span>' : icon('player-play') + '<span>Start<span class="wide"> this act</span></span>';
+  document.querySelectorAll('.dots a').forEach(a => a.classList.toggle('running', a.id === `dot-${running}`));
+}
+// Every request has an 8 s timeout: after the laptop wakes up, or while the controller pod
+// restarts, a hanging fetch would otherwise leave the buttons disabled for good.
+async function fetchT(path, options) {
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 8000);
+  try { return await fetch(path, { ...options, signal: ctl.signal }); } finally { clearTimeout(timer); }
+}
+async function poll() {
+  try {
+    const [cur, traffic] = await Promise.all([fetchT('/scenarios/current').then(r => r.json()), fetchT('/traffic').then(r => r.json())]);
+    running = cur.name; renderLive();
+    $('paused-note').classList.toggle('show', !!traffic.paused);
+  } catch (e) { console.warn('controller not answering, keeping the last state', e); }
+}
+// A failed call (controller restarting, laptop network not back yet) is shown on the button for
+// a few seconds instead of being swallowed, so nobody keeps clicking a dead page. Starting an
+// act while traffic is paused resumes the traffic (the controller says so with traffic_resumed).
+async function call(button, label, path) {
+  const original = button.innerHTML; button.disabled = true; button.innerHTML = icon('loader-2', 'spin') + label;
+  try {
+    const res = await fetchT(path, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json().catch(() => ({}));
+    button.disabled = false; await poll();         // renderLive() refreshes the Start button's own label
+    if (button.id !== 'start') button.innerHTML = original;
+    if (data.traffic_resumed) {
+      button.innerHTML = icon('check') + 'Started. Traffic was paused, now resumed';
+      setTimeout(() => { if (button.id === 'start') renderLive(); else button.innerHTML = original; }, 5000);
+    }
+  } catch (e) {
+    console.error(e);
+    button.innerHTML = icon('alert-triangle') + 'Controller unreachable. Try again';
+    button.disabled = false; setTimeout(() => { if (button.id === 'start') renderLive(); else button.innerHTML = original; }, 4000);
+  } finally { button.disabled = false; }
+}
+async function startAct() { await call($('start'), 'Starting', `/scenarios/${NAME}`); }
+async function resetAll() { await call($('reset'), 'Resetting', '/reset'); }
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === 'ArrowLeft') location.href = $('prev').href;
+  else if (e.key === 'ArrowRight') location.href = $('next').href;
+  else if (e.key === 'a' || e.key === 'A') toggleAnswer();
+});
+
+renderDots(); render(); poll(); setInterval(poll, 5000);
+</script>
+</body>
+</html>

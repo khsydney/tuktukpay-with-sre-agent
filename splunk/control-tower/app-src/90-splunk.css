@@ -1,0 +1,27 @@
+/* fit the tower into a Simple XML page: let it use the full width, drop the panel chrome */
+body { background: #000 !important; }
+.dashboard-header { display: none !important; }
+.dashboard-body { padding: 0 !important; background: transparent !important; }
+.dashboard-row, .dashboard-cell, .dashboard-panel, .panel-element-row, .html { padding: 0 !important; margin: 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.dashboard-row .dashboard-panel { min-height: 0 !important; }
+#tower-root { position: relative; z-index: 0; font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; color: var(--text); background: radial-gradient(55% 900px at 0 100%, rgba(150, 0, 80, .6), transparent 75%) no-repeat, radial-gradient(60% 1000px at 100% 100%, rgba(170, 60, 35, .6), transparent 75%) no-repeat, linear-gradient(180deg, #000 0, #00052A 420px, #000B3F 1100px, #000B3F 100%); }
+/* top glow from splunk.com, centred about two thirds across */
+#tower-root::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 360px; z-index: -1; pointer-events: none; background: radial-gradient(45% 75% at 67% -12%, rgba(238, 29, 98, .6), transparent 72%), radial-gradient(30% 55% at 60% -14%, rgba(249, 157, 28, .75), transparent 72%), radial-gradient(35% 70% at 100% -5%, rgba(70, 20, 170, .5), transparent 72%); -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent); mask-image: linear-gradient(180deg, #000 45%, transparent); }
+#tower-root .frame { min-height: calc(100vh - 90px); }
+#tower-root .topbar { top: 0; }
+#tower-root a { text-decoration: none; }
+#tower-root h3 { color: var(--text); font-weight: 600; }
+#tower-root .topbar h1, #tower-root .page-title h2 { color: transparent; font-weight: 600; }
+#tower-root .content a:not(.btn) { text-decoration: underline; }
+#tower-root table.tbl td, #tower-root table.tbl th { color: var(--text); }
+/* Splunk Web's Bootstrap styles .label as a grey uppercase badge and .btn with gradients and shadows; undo both */
+#tower-root .label { background: none; color: var(--muted); text-shadow: none; text-transform: none; letter-spacing: normal; font-size: 12px; font-weight: 400; line-height: 1.4; padding: 0; border: 0; border-radius: 0; white-space: normal; vertical-align: baseline; }
+#tower-root .btn { background-image: none; background-color: transparent; color: var(--text); border: 1px solid #FFFFFF; border-radius: 24px; text-shadow: none; box-shadow: none; text-transform: none; line-height: 1.4; height: auto; }
+#tower-root .btn:hover { background-color: #FFFFFF; color: #0C1724; }
+#tower-root .btn.primary { background-color: #FFFFFF; color: #0C1724; }
+#tower-root .btn.danger { border-color: var(--st-critical); color: var(--st-critical); }
+#tower-root select { height: auto; margin: 0; width: auto; }
+#tower-root .ctl select { max-width: 152px; }
+#tower-root .chart .node text { letter-spacing: -.3px; }
+#tower-root .nav a:focus { box-shadow: none; outline: none; }
+#tower-root .nav a:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }

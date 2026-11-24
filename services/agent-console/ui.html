@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TukTukPay Agentic Checkout Console</title>
+<style>
+  @font-face { font-family: "Inter"; font-weight: 400; font-display: swap; src: url("/brand/Inter-Regular.woff2") format("woff2"); }
+  @font-face { font-family: "Inter"; font-weight: 600; font-display: swap; src: url("/brand/Inter-SemiBold.woff2") format("woff2"); }
+  /* Same design as the war-room pages (services/chaos-controller/ui.html): colour codes from https://www.splunk.com/. */
+  :root {
+    --bg: #000000; --tint: rgba(255, 255, 255, .1); --line: rgba(255, 255, 255, .2); --text: #FFFFFF; --dim: #D5DCE5; --label: #B8C0CC;
+    --magenta: #CE0070; --hot: #FF0F7B; --amber: #FFAB0F; --blue: #0064DA; --ink: #0C1724;
+    --heading: linear-gradient(90deg, #FFAB0F 5%, #FF712B 40.5%, #FF0F7B 85.5%);
+    --lift: inset 0 1px 0 rgba(255, 255, 255, .22), 0 2px 12px rgba(0, 0, 0, .12), 0 14px 32px rgba(0, 0, 0, .5);
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  h1, h2, p { margin: 0; }
+  :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  body { position: relative; z-index: 0; margin: 0; font: 400 14px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: radial-gradient(55% 900px at 0 100%, rgba(150, 0, 80, .6), transparent 75%) no-repeat, radial-gradient(60% 1000px at 100% 100%, rgba(170, 60, 35, .6), transparent 75%) no-repeat, linear-gradient(180deg, #000 0, #00052A 420px, #000B3F 1100px, #000B3F 100%); min-height: 100vh; color: var(--text); font-variant-numeric: tabular-nums; }
+  .aurora { position: absolute; top: 0; left: 0; right: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background: radial-gradient(45% 75% at 67% -12%, rgba(238, 29, 98, .6), transparent 72%), radial-gradient(30% 55% at 60% -14%, rgba(249, 157, 28, .75), transparent 72%), radial-gradient(35% 70% at 100% -5%, rgba(70, 20, 170, .5), transparent 72%);
+    -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent); mask-image: linear-gradient(180deg, #000 45%, transparent); }
+  .logo { display: block; height: 36px; width: auto; }
+  .i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  header { max-width: 1200px; margin: 0 auto; padding: 20px 24px 8px; display: flex; align-items: center; gap: 16px 24px; flex-wrap: wrap; }
+  h1, h2 { width: fit-content; font-weight: 600; background: var(--heading); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h1 { font-size: 32px; line-height: 1.2; }
+  header p { color: var(--dim); max-width: 64ch; }
+  .state { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; white-space: nowrap; }
+  .state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
+  .state.down { color: var(--amber); }
+  .state.down::before { background: var(--amber); }
+  main { max-width: 1200px; margin: 0 auto; padding: 0 24px 48px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 24px; align-items: start; }
+  section { margin-top: 24px; min-width: 0; }
+  .wide { grid-column: 1 / -1; }
+  h2 { font-size: 24px; line-height: 1.25; margin-bottom: 8px; }
+  .banner { display: none; grid-column: 1 / -1; align-items: flex-start; gap: 8px; margin-top: 16px; padding: 12px 16px; background: rgba(0, 0, 0, .55); border: 1px solid var(--amber); border-radius: 16px; }
+  .banner .i { margin-top: 3px; color: var(--amber); }
+  .banner.show { display: flex; }
+  .card { padding: 20px; background: var(--tint); border-radius: 24px; box-shadow: var(--lift); backdrop-filter: blur(8px); }
+  label, .lbl { display: block; color: var(--label); margin-bottom: 4px; }
+  input, select, textarea { width: 100%; min-height: 36px; background: rgba(0, 0, 0, .55); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; }
+  option { background: var(--ink); color: var(--text); }
+  textarea { min-height: 56px; resize: vertical; display: block; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .full { grid-column: 1 / -1; }
+  /* Task presets: small tiles with the same colour band as the failure tiles. */
+  .presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .preset { display: flex; flex-direction: column; padding: 0; overflow: hidden; font: inherit; font-weight: 600; line-height: 1.3; color: var(--text); text-align: left; background: var(--tint); border: 1px solid transparent; border-radius: 16px; cursor: pointer; }
+  .preset:hover { background: rgba(255, 255, 255, .16); }
+  .preset .band { display: flex; align-items: center; height: 48px; padding: 0 12px; }
+  .preset .band .i { width: 28px; height: 28px; stroke-width: 1.5; }
+  .preset .name { padding: 8px 12px 12px; }
+  .preset[aria-pressed="true"] { background: var(--text); color: var(--ink); }
+  .b0 { background: radial-gradient(70% 160% at 85% 0, #FF0F7B, transparent 70%), radial-gradient(60% 160% at 45% 120%, #FF712B, transparent 75%), #1A0B3F; color: var(--text); }
+  .b1 { background: radial-gradient(70% 170% at 90% 10%, #0064DA, transparent 70%), radial-gradient(55% 150% at 35% 120%, #7A1FD1, transparent 75%), #03102F; color: var(--text); }
+  .b2 { background: radial-gradient(70% 170% at 80% -10%, #FFAB0F, transparent 65%), radial-gradient(70% 170% at 25% 130%, #CE0070, transparent 75%), #2B0820; color: var(--text); }
+  .b3 { background: radial-gradient(60% 170% at 90% 110%, #FF0F7B, transparent 70%), radial-gradient(70% 170% at 40% -20%, #0064DA, transparent 72%), #08103A; color: var(--text); }
+  .merchants { display: flex; flex-wrap: wrap; gap: 8px; }
+  .merchants label { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 4px 12px; color: var(--text); background: var(--tint); border-radius: 16px; cursor: pointer; }
+  .merchants input { width: 16px; min-height: 16px; height: 16px; accent-color: var(--magenta); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 20px; font: inherit; font-weight: 600; color: var(--text); background: transparent; border: 1px solid var(--text); border-radius: 24px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: var(--text); color: var(--ink); }
+  .btn.primary { min-height: 44px; font-size: 15px; background: var(--magenta); border-color: var(--magenta); color: var(--text); }
+  .btn.primary:hover { background: var(--hot); border-color: var(--hot); color: var(--bg); }
+  .btn.attack { min-height: 36px; padding: 4px 14px; border-color: var(--amber); }
+  .btn.attack:hover { background: var(--amber); color: var(--bg); }
+  .btn.attack .i { color: var(--amber); }
+  .btn.attack:hover .i { color: var(--bg); }
+  .btn:disabled { opacity: .6; cursor: wait; }
+  .row { display: flex; gap: 8px 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+  .side { min-width: 0; }
+  .side .row { margin-top: 0; }
+  .hint { color: var(--label); }
+  .side .row + .hint { margin-top: 12px; }
+  code { font: 13px var(--mono); background: rgba(0, 0, 0, .45); padding: 1px 6px; border-radius: 6px; }
+  /* Agent run */
+  #runhead { font-weight: 600; color: var(--text); }
+  #runhead.none { font-weight: 400; color: var(--label); }
+  .timeline { list-style: none; margin: 12px 0 0; padding: 0; }
+  .timeline li { position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding: 0 0 12px 20px; line-height: 1.4; overflow-wrap: anywhere; }
+  .timeline li::before { content: ""; position: absolute; left: 0; top: 5px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--label); }
+  .timeline li:not(:last-child)::after { content: ""; position: absolute; left: 4px; top: 18px; bottom: -3px; width: 2px; background: var(--line); }
+  .timeline time { color: var(--label); }
+  .timeline li.ok::before { border-color: var(--text); background: var(--text); }
+  .timeline li.blocked::before { border-color: var(--hot); background: var(--hot); box-shadow: 0 0 8px var(--hot); }
+  .timeline li.attack::before, .timeline li.warn::before { border-color: var(--amber); background: var(--amber); }
+  .outcome { margin-top: 12px; padding: 16px; background: rgba(0, 0, 0, .45); border: 1px solid var(--line); border-radius: 16px; overflow-wrap: anywhere; }
+  .outcome b { font-size: 16px; font-weight: 600; }
+  .outcome a, table a { color: var(--text); }
+  .outcome.purchased { border-color: rgba(255, 255, 255, .8); box-shadow: 0 0 24px rgba(255, 255, 255, .4); }
+  .outcome.blocked_by_mandate, .outcome.mandate_refused_by_wallet, .outcome.wallet_unreachable, .outcome.payment_declined, .outcome.payment_error, .outcome.error { border-color: var(--hot); box-shadow: 0 0 24px rgba(255, 15, 123, .55); }
+  .outcome.no_purchase { border-color: var(--amber); }
+  /* Governance ledger */
+  .scroll { overflow: auto; max-height: 440px; }
+  th { position: sticky; top: 0; z-index: 1; background: #1A2450; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--label); font-weight: 600; white-space: nowrap; }
+  td.intent { min-width: 180px; }
+  td:nth-child(6), td:nth-child(8) { max-width: 150px; }
+  td:nth-child(7) { max-width: 170px; }
+  td .pill { white-space: normal; }
+  td:last-child, th:last-child { white-space: nowrap; }
+  td.empty { padding: 16px 8px; color: var(--label); border-bottom: 0; }
+  .kya, .pill { display: inline-block; padding: 1px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; border: 1px solid var(--line); }
+  .kya.A, .pill.purchased { background: var(--text); border-color: var(--text); color: var(--ink); }
+  .kya.B, .pill.running, .pill.queued { background: var(--blue); border-color: var(--blue); color: var(--text); }
+  .kya.C, .pill.no_purchase { border-color: var(--amber); color: var(--amber); }
+  .kya.D, .kya.none, .pill.blocked_by_mandate, .pill.mandate_refused_by_wallet, .pill.wallet_unreachable, .pill.payment_declined, .pill.error, .pill.payment_error { background: var(--magenta); border-color: var(--magenta); color: var(--text); }
+  @media (max-width: 980px) { main { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 600px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .state { margin-left: 0; }
+    .presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .btn.primary { width: 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+</style>
+<link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<!-- Icons: Tabler Icons 3.50.0, outline set (MIT licence, copyright 2020-2026 Pawel Kuna, https://tabler.io/icons).
+     Inlined so the page needs no network. To add one, copy its paths from @tabler/icons into a new symbol. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-plane-departure" viewBox="0 0 24 24"><path d="M14.639 10.258l4.83 -1.294a2 2 0 1 1 1.035 3.863l-14.489 3.883l-4.45 -5.02l2.897 -.776l2.45 1.414l2.897 -.776l-3.743 -6.244l2.898 -.777l5.675 5.727"/><path d="M3 21h18"/></symbol>
+<symbol id="i-headphones" viewBox="0 0 24 24"><path d="M4 15a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-1a2 2 0 0 1 -2 -2l0 -3"/><path d="M15 15a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-1a2 2 0 0 1 -2 -2l0 -3"/><path d="M4 15v-3a8 8 0 0 1 16 0v3"/></symbol>
+<symbol id="i-bed" viewBox="0 0 24 24"><path d="M5 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M22 17v-3h-20"/><path d="M2 8v9"/><path d="M12 14h10v-2a3 3 0 0 0 -3 -3h-7v5"/></symbol>
+<symbol id="i-device-gamepad-2" viewBox="0 0 24 24"><path d="M12 5h3.5a5 5 0 0 1 0 10h-5.5l-4.015 4.227a2.3 2.3 0 0 1 -3.923 -2.035l1.634 -8.173a5 5 0 0 1 4.904 -4.019h3.4"/><path d="M14 15l4.07 4.284a2.3 2.3 0 0 0 3.925 -2.023l-1.6 -8.232"/><path d="M8 9v2"/><path d="M7 10h2"/><path d="M14 10h2"/></symbol>
+<symbol id="i-coin" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1"/><path d="M12 7v10"/></symbol>
+<symbol id="i-biohazard" viewBox="0 0 24 24"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M11.939 14c0 .173 .048 .351 .056 .533l0 .217a4.75 4.75 0 0 1 -4.533 4.745l-.217 0m-4.75 -4.75a4.75 4.75 0 0 1 7.737 -3.693m6.513 8.443a4.75 4.75 0 0 1 -4.69 -5.503l-.06 0m1.764 -2.944a4.75 4.75 0 0 1 7.731 3.477l0 .217m-11.195 -3.813a4.75 4.75 0 0 1 -1.828 -7.624l.164 -.172m6.718 0a4.75 4.75 0 0 1 -1.665 7.798"/></symbol>
+<symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"/><path d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"/></symbol>
+<symbol id="i-file-alert" viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M12 17l.01 0"/><path d="M12 11l0 3"/></symbol>
+<symbol id="i-user-x" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h3.5"/><path d="M22 22l-5 -5"/><path d="M17 22l5 -5"/></symbol>
+<symbol id="i-clock-x" viewBox="0 0 24 24"><path d="M20.926 13.15a9 9 0 1 0 -7.835 7.784"/><path d="M12 7v5l2 2"/><path d="M22 22l-5 -5"/><path d="M17 22l5 -5"/></symbol>
+<symbol id="i-building-store" viewBox="0 0 24 24"><path d="M3 21l18 0"/><path d="M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4"/><path d="M5 21l0 -10.15"/><path d="M19 21l0 -10.15"/><path d="M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4"/></symbol>
+<symbol id="i-alert-triangle" viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0"/><path d="M12 16h.01"/></symbol>
+<symbol id="i-player-play" viewBox="0 0 24 24"><path d="M7 4v16l13 -8l-13 -8"/></symbol>
+<symbol id="i-loader-2" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+</svg>
+<div class="aurora" aria-hidden="true"><svg viewBox="0 0 1440 420" preserveAspectRatio="none" width="100%" height="100%"><rect x="1419" y="0" width="1.5" height="384" fill="#F99D1C" opacity="0.31"/><rect x="1359" y="0" width="1.5" height="204" fill="#F99D1C" opacity="0.45"/><rect x="80" y="0" width="1.5" height="387" fill="#F99D1C" opacity="0.35"/><rect x="1364" y="0" width="1.5" height="256" fill="#EE1D62" opacity="0.50"/><rect x="97" y="0" width="1.5" height="282" fill="#F99D1C" opacity="0.64"/><rect x="1358" y="0" width="1.5" height="339" fill="#F05A22" opacity="0.83"/><rect x="1421" y="0" width="1.5" height="277" fill="#EE1D62" opacity="0.40"/><rect x="1402" y="0" width="1.5" height="311" fill="#F99D1C" opacity="0.40"/><rect x="50" y="0" width="1.5" height="358" fill="#F99D1C" opacity="0.62"/><rect x="60" y="0" width="1.5" height="275" fill="#F05A22" opacity="0.75"/><rect x="1358" y="0" width="1.5" height="181" fill="#F05A22" opacity="0.79"/><rect x="1343" y="0" width="1.5" height="134" fill="#F99D1C" opacity="0.69"/><rect x="1345" y="0" width="1.5" height="267" fill="#F99D1C" opacity="0.82"/><rect x="117" y="0" width="1.5" height="103" fill="#EE1D62" opacity="0.52"/><rect x="39" y="0" width="1.5" height="88" fill="#F99D1C" opacity="0.74"/><rect x="1376" y="0" width="1.5" height="416" fill="#F99D1C" opacity="0.49"/><rect x="1289" y="0" width="1.5" height="14" fill="#F99D1C" opacity="0.38"/><rect x="211" y="0" width="1.5" height="15" fill="#F99D1C" opacity="0.38"/><rect x="1240" y="0" width="1.5" height="23" fill="#F99D1C" opacity="0.39"/><rect x="244" y="0" width="1.5" height="16" fill="#F99D1C" opacity="0.37"/><rect x="772" y="0" width="1.5" height="21" fill="#F99D1C" opacity="0.40"/><rect x="626" y="0" width="1.5" height="22" fill="#F99D1C" opacity="0.48"/><rect x="531" y="0" width="1.5" height="22" fill="#F99D1C" opacity="0.63"/><rect x="1194" y="0" width="1.5" height="19" fill="#F99D1C" opacity="0.47"/><rect x="952" y="0" width="1.5" height="21" fill="#F99D1C" opacity="0.56"/><rect x="406" y="0" width="1.5" height="13" fill="#F99D1C" opacity="0.46"/><rect x="1046" y="0" width="1.5" height="17" fill="#F99D1C" opacity="0.52"/><rect x="1112" y="0" width="1.5" height="10" fill="#F99D1C" opacity="0.55"/><rect x="519" y="0" width="1.5" height="17" fill="#F99D1C" opacity="0.63"/><rect x="418" y="0" width="1.5" height="23" fill="#F99D1C" opacity="0.33"/></svg></div>
+<header>
+  <img class="logo" src="/brand/splunk-logo-white.svg" alt="Splunk by Cisco" onerror="this.remove()">
+  <div>
+    <h1>TukTukPay agentic checkout console</h1>
+    <p>An AI agent buys on a consumer's behalf under an AMP-style pre-approved task mandate. Every run is one trace in Splunk APM.</p>
+  </div>
+  <span class="state" id="registry" role="status">Checking the agent registry…</span>
+</header>
+<main>
+  <div class="banner" id="note" role="alert"></div>
+  <section>
+    <h2>1. Pre-approve a task</h2>
+    <div class="card">
+      <div class="lbl">Task presets</div>
+      <div class="presets">
+        <button class="preset" id="preset-flight" aria-pressed="false" onclick="preset('flight')"><span class="band b0"><svg class="i" aria-hidden="true"><use href="#i-plane-departure"/></svg></span><span class="name">Cheapest BKK→SIN flight</span></button>
+        <button class="preset" id="preset-headphones" aria-pressed="false" onclick="preset('headphones')"><span class="band b1"><svg class="i" aria-hidden="true"><use href="#i-headphones"/></svg></span><span class="name">Noise-cancelling headphones</span></button>
+        <button class="preset" id="preset-hotel" aria-pressed="false" onclick="preset('hotel')"><span class="band b2"><svg class="i" aria-hidden="true"><use href="#i-bed"/></svg></span><span class="name">Hotel night in Bangkok</span></button>
+        <button class="preset" id="preset-credits" aria-pressed="false" onclick="preset('credits')"><span class="band b3"><svg class="i" aria-hidden="true"><use href="#i-device-gamepad-2"/></svg></span><span class="name">Game credits</span></button>
+      </div>
+      <div class="grid" style="margin-top:16px">
+        <div><label for="customer">Customer</label><select id="customer"><option>cus_00001</option><option>cus_00042</option><option>cus_00777</option></select></div>
+        <div><label for="wallet">Wallet</label><select id="wallet" onchange="syncCurrency()"><option value="truemoney">TrueMoney (THB)</option><option value="rabbitlinepay">Rabbit LINE Pay (THB)</option><option value="shopeepay">ShopeePay (THB)</option><option value="dana">DANA (IDR)</option><option value="gcash">GCash (PHP)</option><option value="tng">TNG eWallet (MYR)</option><option value="grabpay">GrabPay (SGD)</option></select></div>
+        <div class="full"><label for="agent">Agent (Know-Your-Agent registry)</label><select id="agent"></select></div>
+        <div class="full"><label for="intent">Intent (what the consumer asked the agent to do)</label><textarea id="intent"></textarea></div>
+        <div><label for="category">Category</label><select id="category" onchange="syncMerchants()"><option>flights</option><option>hotels</option><option>electronics</option><option>games</option><option>food</option></select></div>
+        <div><label for="max_amount">Maximum amount</label><input id="max_amount" type="number" step="0.01" value="6000"></div>
+        <div><label for="currency">Currency</label><input id="currency" value="THB"></div>
+        <div class="grid" style="gap:8px"><div><label for="ttl">Expires (seconds)</label><input id="ttl" type="number" value="900"></div><div><label for="max_uses">Maximum uses</label><input id="max_uses" type="number" value="1"></div></div>
+        <div class="full"><div class="lbl">Allowed merchants</div><div class="merchants" id="merchants"></div></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="run" onclick="run()"><svg class="i" aria-hidden="true"><use href="#i-player-play"/></svg>Pre-approve and run the agent</button>
+      </div>
+      <p class="hint" style="margin-top:8px">The wallet issues a token, the agent plans and searches the catalog, TukTukPay verifies the mandate, then the payment runs.</p>
+    </div>
+  </section>
+
+  <div class="side">
+  <section>
+    <h2>Simulate a misbehaving agent</h2>
+    <div class="card">
+        <div class="row">
+          <button class="btn attack" onclick="run('overspend')"><svg class="i" aria-hidden="true"><use href="#i-coin"/></svg>Overspend (qty ×3)</button>
+          <button class="btn attack" onclick="run('injection')"><svg class="i" aria-hidden="true"><use href="#i-biohazard"/></svg>Poisoned listing</button>
+          <button class="btn attack" onclick="run('replay')"><svg class="i" aria-hidden="true"><use href="#i-repeat"/></svg>Replay used token</button>
+          <button class="btn attack" onclick="run('forged')"><svg class="i" aria-hidden="true"><use href="#i-file-alert"/></svg>Forged token</button>
+          <button class="btn attack" onclick="run('unregistered')"><svg class="i" aria-hidden="true"><use href="#i-user-x"/></svg>Unregistered agent</button>
+          <button class="btn attack" onclick="run('expired')"><svg class="i" aria-hidden="true"><use href="#i-clock-x"/></svg>Expired mandate</button>
+          <button class="btn attack" onclick="run('wrong_merchant')"><svg class="i" aria-hidden="true"><use href="#i-building-store"/></svg>Wrong merchant</button>
+        </div>
+        <p class="hint">Poisoned listing needs the <code>catalog_prompt_injection</code> flag on in the war room controls. Run it with the headphones preset.</p>
+    </div>
+  </section>
+  <section>
+    <h2>2. Agent run</h2>
+    <div class="card">
+      <div id="runhead" class="none">No run yet. Pick a preset and press Pre-approve and run the agent.</div>
+      <ul class="timeline" id="timeline"></ul>
+      <div id="outcome"></div>
+    </div>
+  </section>
+  </div>
+
+  <section class="wide">
+    <h2>3. Governance ledger</h2>
+    <div class="card">
+      <p class="hint" style="margin-bottom:8px">What TukTukPay let through and what it stopped.</p>
+      <div class="scroll" tabindex="0" aria-label="Governance ledger"><table>
+        <thead><tr><th>Time</th><th>Agent</th><th>KYA</th><th>Intent</th><th>Amount / limit</th><th>Simulation</th><th>Outcome</th><th>Reason</th><th>Trace</th></tr></thead>
+        <tbody id="ledger"><tr><td class="empty" colspan="9">Loading runs…</td></tr></tbody>
+      </table></div>
+    </div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let cfg = {}, agents = {}, current = null, timer = null, registryOk = false, currentPreset = 'flight', pollFailingSince = 0, polling = false, timelineDrawn = '', ledgerDrawn = '';
+const PRESETS = {
+  flight:     { intent: "Book the cheapest BKK to SIN economy flight for Friday morning", category: "flights", wallet: "truemoney", max_amount: 6000, currency: "THB", agent: "travelgenie.ai" },
+  headphones: { intent: "Buy the best-rated noise-cancelling headphones under my budget", category: "electronics", wallet: "shopeepay", max_amount: 6500, currency: "THB", agent: "shopbot.lazada" },
+  hotel:      { intent: "Book one night in a standard room in Bangkok for next Tuesday", category: "hotels", wallet: "rabbitlinepay", max_amount: 4000, currency: "THB", agent: "siam-concierge" },
+  credits:    { intent: "Top up 500 Garena Shells", category: "games", wallet: "truemoney", max_amount: 600, currency: "THB", agent: "gemini-shopper" },
+};
+const CAT_MERCHANTS = { flights: ["thai-airways"], hotels: ["centara-hotels"], electronics: ["lazada-th"], games: ["garena"], food: ["cafe-amazon"] };
+const ALL_MERCHANTS = ["thai-airways", "lazada-th", "centara-hotels", "garena", "cafe-amazon", "grab"];
+const WALLET_CCY = { truemoney: "THB", rabbitlinepay: "THB", shopeepay: "THB", dana: "IDR", gcash: "PHP", tng: "MYR", grabpay: "SGD" };
+
+// Every call has an 8 s timeout and throws on a non-2xx answer, so a dead or restarting backend
+// shows up as a message instead of a silently frozen page.
+async function api(path, options) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const res = await fetch(path, { ...options, signal: ctl.signal });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail || `${(options && options.method) || 'GET'} ${path} -> HTTP ${res.status}`);
+    return body;
+  } catch (e) {
+    throw e.name === 'AbortError' ? new Error(`${path} did not answer within 8 s`) : e;
+  } finally { clearTimeout(t); }
+}
+const icon = (name, cls = '') => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+function note(msg) { const el = $('note'); el.innerHTML = msg ? icon('alert-triangle') + `<div>${esc(msg)}</div>` : ''; el.classList.toggle('show', !!msg); }
+function showRegistry() {
+  $('registry').textContent = registryOk ? 'Agent registry up' : 'Agent registry down';
+  $('registry').classList.toggle('down', !registryOk);
+}
+// One run at a time: every run button is off while the agent works, and the main one shows it.
+const RUN_LABEL = icon('player-play') + 'Pre-approve and run the agent';
+function setBusy(busy) {
+  document.querySelectorAll('#run, .btn.attack').forEach(b => { b.disabled = busy; });
+  $('run').innerHTML = busy ? icon('loader-2', 'spin') + 'Agent is running' : RUN_LABEL;
+}
+
+// The agent list comes from the wallet's KYA registry — and wallet-sim is exactly the service Act 7
+// crash-loops. So the list is retried until it answers, and meanwhile the preset agents are offered
+// so a run still carries an agent id (the wallet does the real check once it is back). A page that
+// loaded during the outage used to keep an empty list for good and send "" as the agent.
+async function loadAgents() {
+  try {
+    agents = await api('/v1/agents');
+    const selected = $('agent').value;
+    $('agent').innerHTML = Object.entries(agents).map(([id, a]) => `<option value="${id}">${id} — ${a.operator} · KYA ${a.rating}${a.registered ? '' : ' (not registered)'}</option>`).join('');
+    $('agent').value = agents[selected] ? selected : PRESETS[currentPreset].agent;
+    registryOk = true; note(''); showRegistry();
+  } catch (e) {
+    registryOk = false;
+    if (!$('agent').options.length) {
+      $('agent').innerHTML = [...new Set(Object.values(PRESETS).map(p => p.agent))].map(id => `<option value="${id}">${id} — KYA registry unavailable, rating unknown</option>`).join('');
+      $('agent').value = PRESETS[currentPreset].agent;
+    }
+    note(`Agent registry unreachable: ${e.message}. wallet-sim is down (Act 7 crash-loops it on purpose), so agents fail closed until it is back. Retrying every 5 seconds.`);
+    showRegistry();
+  }
+  return registryOk;
+}
+async function init() {
+  cfg = await api('/config').catch(() => ({}));
+  await loadAgents();
+  preset('flight');
+  refreshLedger(); setInterval(refreshLedger, 4000);
+  setInterval(() => { if (!registryOk) loadAgents(); }, 5000);
+}
+function preset(name) {
+  const p = PRESETS[name]; currentPreset = name;
+  Object.keys(PRESETS).forEach(k => $(`preset-${k}`).setAttribute('aria-pressed', k === name));
+  $('intent').value = p.intent; $('category').value = p.category; $('wallet').value = p.wallet; $('max_amount').value = p.max_amount; $('currency').value = p.currency;
+  if ([...$('agent').options].some(o => o.value === p.agent)) $('agent').value = p.agent;
+  syncMerchants();
+}
+function syncCurrency() { $('currency').value = WALLET_CCY[$('wallet').value] || 'SGD'; }
+function syncMerchants() {
+  const allowed = CAT_MERCHANTS[$('category').value] || [];
+  $('merchants').innerHTML = ALL_MERCHANTS.map(m => `<label><input type="checkbox" value="${m}" ${allowed.includes(m) ? 'checked' : ''}> ${m}</label>`).join('');
+}
+function spec() {
+  return {
+    agent_id: $('agent').value, customer_id: $('customer').value, wallet: $('wallet').value, intent: $('intent').value, category: $('category').value,
+    max_amount: Number($('max_amount').value), currency: $('currency').value,
+    merchants: [...document.querySelectorAll('#merchants input:checked')].map(i => i.value), ttl_s: Number($('ttl').value), max_uses: Number($('max_uses').value),
+  };
+}
+async function run(attack) {
+  if (!registryOk) await loadAgents();            // the wallet may be back since the page loaded
+  const s = spec();
+  if (attack === 'unregistered') s.agent_id = 'promo-hunter-bot';
+  if (!s.agent_id) { note('No agent selected: the agent registry has not answered yet, so there is nothing to pre-approve. Retrying.'); return; }
+  setBusy(true); pollFailingSince = 0; timelineDrawn = '';
+  try {
+    const task = await api('/v1/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mandate: s, attack: attack || null }) });
+    current = task.id;
+    $('runhead').classList.remove('none');
+    $('runhead').textContent = `Run ${task.id}, agent ${task.agent_id}${attack ? ', simulation: ' + attack : ''}`;
+    $('timeline').innerHTML = ''; $('outcome').innerHTML = '';
+    clearInterval(timer); timer = setInterval(poll, 500);
+  } catch (e) {
+    setBusy(false);
+    $('outcome').innerHTML = `<div class="outcome error"><b>The console did not take the task.</b> ${esc(e.message)}. The shopping-agent service is unreachable or restarting; try again in a few seconds.</div>`;
+  }
+}
+async function poll() {
+  if (polling) return;                              // a slow answer must not pile up overlapping polls
+  polling = true; let t;
+  try { t = await api('/v1/tasks/' + current); pollFailingSince = 0; }
+  catch (e) {
+    pollFailingSince = pollFailingSince || Date.now();
+    if (Date.now() - pollFailingSince > 30000) {    // a restarting pod needs ~15 s; after 30 s give up visibly
+      clearInterval(timer); setBusy(false);
+      $('outcome').innerHTML = `<div class="outcome error"><b>Lost contact with the console during the run.</b> ${esc(e.message)}</div>`;
+    }
+    return;
+  } finally { polling = false; }
+  // Redraw only when something changed, so text stays selectable and links stay clickable during a run.
+  const steps = t.steps.map(s => `<li class="${s.kind || ''}"><time>${s.t}</time><div>${esc(s.text)}</div></li>`).join('');
+  if (steps !== timelineDrawn) { $('timeline').innerHTML = steps; timelineDrawn = steps; }
+  if (t.status === 'done' || t.status === 'blocked' || t.status === 'error') {
+    clearInterval(timer); setBusy(false);
+    const link = traceLink(t.trace_id);
+    const usage = t.usage ? `, ${t.usage.input_tokens + t.usage.output_tokens} tokens, $${t.usage.cost_usd}` : '';
+    $('outcome').innerHTML = `<div class="outcome ${t.outcome}"><b>${label(t.outcome)}</b>${t.payment && t.payment.decline_reason ? ': ' + esc(t.payment.decline_reason) : ''}${t.detail ? ': ' + esc(t.detail) : ''}<br><span class="hint">Trace ${link}${usage}</span></div>`;
+    refreshLedger();
+  }
+}
+function traceLink(id, short) { if (!id) return '—'; const text = short ? id.slice(0, 12) + '…' : id; return cfg.trace_url_template ? `<a target="_blank" rel="noopener" title="${id}" href="${cfg.trace_url_template.replace('{trace_id}', id)}">${text}</a>` : `<code title="${id}">${text}</code>`; }
+function label(o) { return ({ purchased: 'Purchased', blocked_by_mandate: 'Blocked by TukTukPay mandate verification', mandate_refused_by_wallet: 'Wallet refused to issue a mandate', wallet_unreachable: 'Wallet (agent registry) unreachable: the agent failed closed', payment_declined: 'Payment declined', payment_error: 'Payment error', no_purchase: 'No purchase', error: 'Error' })[o] || o; }
+async function refreshLedger() {
+  let rows;
+  try { rows = await api('/v1/tasks?limit=25'); } catch (e) { return; }   // keep the last table while the console is unreachable
+  const html = rows.map(t => {
+    const kya = (t.mandate && t.mandate.kya_rating) || (agents[t.agent_id] ? agents[t.agent_id].rating : '?');
+    const amt = t.payment && t.payment.amount != null ? `${t.payment.amount} / ${t.max_amount} ${t.currency}` : `— / ${t.max_amount} ${t.currency}`;
+    const reason = (t.payment && t.payment.decline_reason) || (t.outcome === 'mandate_refused_by_wallet' ? 'agent_not_registered' : '') || (t.flags && t.flags.length ? t.flags.join('; ') : '');
+    return `<tr><td>${new Date(t.started * 1000).toLocaleTimeString([], { hour12: false })}</td><td>${esc(t.agent_id)}</td><td><span class="kya ${esc(kya)}">${esc(kya)}</span></td><td class="intent" title="${esc(t.intent)}">${esc(t.intent.length > 80 ? t.intent.slice(0, 80) + '…' : t.intent)}</td><td>${amt}</td><td>${code(t.attack || '')}</td><td><span class="pill ${esc(t.outcome || t.status)}">${code(t.outcome || t.status)}</span></td><td>${code(reason)}</td><td>${traceLink(t.trace_id, true)}</td></tr>`;
+  }).join('') || '<tr><td class="empty" colspan="9">No runs yet. Pre-approve a task to fill the ledger.</td></tr>';
+  // Only touch the table when a row changed, so a click on a trace link is never lost to the refresh.
+  if (html !== ledgerDrawn) { $('ledger').innerHTML = html; ledgerDrawn = html; }
+}
+// Long codes such as mandate_merchant_not_allowed may only wrap after an underscore.
+const code = (s) => esc(s).replace(/_/g, '_<wbr>');
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+init();
+</script>
+</body>
+</html>

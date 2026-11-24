@@ -1,0 +1,159 @@
+# Helm values for the Splunk Distribution of the OpenTelemetry Collector on EKS,
+# with the OpenTelemetry Operator for zero-code auto-instrumentation.
+#
+#   helm repo add splunk-otel-collector-chart https://signalfx.github.io/splunk-otel-collector-chart
+#   helm repo update
+#   helm upgrade --install splunk-otel-collector splunk-otel-collector-chart/splunk-otel-collector \
+#     --namespace splunk-otel --create-namespace \
+#     --set splunkObservability.accessToken=$SPLUNK_ACCESS_TOKEN \
+#     -f k8s/values-splunk-otel-collector.yaml
+#
+# On kind do NOT run this by hand: k8s/kind-up.sh (make k8s-up) passes clusterName=kind-<cluster>,
+# environment=$DEPLOYMENT_ENVIRONMENT and the HEC settings. Without them the kind agent stamps
+# tuktukpay-eks on the telemetry, and APM shows the services as uninstrumented in your environment
+# (seen 19 Oct 2026: only checkout-api stayed).
+#
+# Then: kubectl apply -f k8s/tuktukpay.yaml   (annotated pods get the Java / Node.js / .NET agents injected at start)
+
+clusterName: tuktukpay-eks
+environment: tuktukpay-eks            # becomes deployment.environment on everything the collector emits
+
+splunkObservability:
+  realm: us1                         # your realm (us1/sg0/au0/jp0/eu0)
+  # accessToken: set with --set or via an existing secret (secret.create=false, secret.name=...)
+  profilingEnabled: true             # AlwaysOn Profiling data path
+  infrastructureMonitoringEventsEnabled: true
+
+# Logs -> Splunk Cloud Platform over HEC; Log Observer Connect reads them from Observability
+# Cloud (docs/logs-setup.md). The applications export their own OTLP log records (same code as
+# Docker Compose: trace_id, span_id, service.name, business fields), so container stdout
+# collection is switched off below to avoid every line arriving twice.
+splunkPlatform:
+  # k8s/kind-up.sh fills these from SPLUNK_HEC_URL / SPLUNK_HEC_TOKEN / SPLUNK_HEC_INDEX in .env (--set);
+  # an empty endpoint keeps the Splunk Platform exporter off. Manual install:
+  #   --set splunkPlatform.endpoint=https://http-inputs-<stack>.splunkcloud.com:443/services/collector \
+  #   --set splunkPlatform.token=<HEC token> --set splunkPlatform.index=tuktukpay
+  endpoint: ""
+  token: ""
+  index: tuktukpay
+  logsEnabled: true
+  metricsEnabled: false
+  # otherwise the exporter blocks the pipeline when the stack is unreachable (IP allow list)
+  retryOnFailure:
+    enabled: true
+    maxElapsedTime: 120s
+logsCollection:
+  containers:
+    enabled: false                   # apps send OTLP logs themselves; turn on for pod stdout of third-party images
+
+# --- Zero-code auto-instrumentation via the OpenTelemetry Operator -----------------
+operatorcrds:
+  install: true
+operator:
+  enabled: true
+# The chart creates an Instrumentation CR named splunk-otel-collector in this namespace.
+# Reference it from workloads with:
+#   instrumentation.opentelemetry.io/inject-java:   "splunk-otel/splunk-otel-collector"
+#   instrumentation.opentelemetry.io/inject-nodejs: "splunk-otel/splunk-otel-collector"
+#   instrumentation.opentelemetry.io/inject-dotnet: "splunk-otel/splunk-otel-collector"
+instrumentation:
+  spec:
+    propagators: [tracecontext, baggage]
+    java:
+      env:
+        - name: SPLUNK_PROFILER_ENABLED
+          value: "true"
+        - name: SPLUNK_PROFILER_MEMORY_ENABLED
+          value: "true"
+    nodejs:
+      env:
+        - name: SPLUNK_PROFILER_ENABLED
+          value: "true"
+    dotnet:
+      env:
+        - name: SPLUNK_PROFILER_ENABLED
+          value: "true"
+
+# --- Agent (DaemonSet) pipeline tweaks: same workshop plumbing as otel/collector-config.yaml
+agent:
+  config:
+    receivers:
+      # kind (and minikube) kubelets present a self-signed certificate; without this the
+      # /stats/summary scrape fails and no container CPU / memory metrics reach Splunk.
+      # Remove on EKS/GKE/AKS, where the kubelet certificate is signed by the cluster CA.
+      kubelet_stats:
+        insecure_skip_verify: true
+    processors:
+      filter/drop-chaos-polling:
+        error_mode: ignore
+        traces:
+          span:
+            - 'attributes["server.address"] == "chaos-controller"'
+            - 'attributes["net.peer.name"] == "chaos-controller"'
+            - 'IsMatch(attributes["url.full"], ".*chaos-controller.*")'
+            - 'IsMatch(attributes["http.url"], ".*chaos-controller.*")'
+            - 'IsMatch(attributes["url.full"], ".*/flags$")'
+            - 'IsMatch(attributes["http.url"], ".*/flags$")'
+      transform/router-headers:
+        error_mode: ignore
+        trace_statements:
+          - context: span
+            statements:
+              - set(attributes["payment.acquirer"], attributes["http.response.header.x-payment-acquirer"][0]) where attributes["http.response.header.x-payment-acquirer"] != nil
+              - set(attributes["payment.acquirer"], attributes["http.response.header.x_payment_acquirer"][0]) where attributes["http.response.header.x_payment_acquirer"] != nil
+              - set(attributes["route.attempts"], attributes["http.response.header.x-route-attempts"][0]) where attributes["http.response.header.x-route-attempts"] != nil
+              - set(attributes["route.attempts"], attributes["http.response.header.x_route_attempts"][0]) where attributes["http.response.header.x_route_attempts"] != nil
+              - set(attributes["route.failover"], attributes["http.response.header.x-route-failover"][0]) where attributes["http.response.header.x-route-failover"] != nil
+              - set(attributes["route.failover"], attributes["http.response.header.x_route_failover"][0]) where attributes["http.response.header.x_route_failover"] != nil
+              - set(attributes["payment.outcome"], attributes["http.response.header.x-route-outcome"][0]) where attributes["http.response.header.x-route-outcome"] != nil
+              - set(attributes["payment.outcome"], attributes["http.response.header.x_route_outcome"][0]) where attributes["http.response.header.x_route_outcome"] != nil
+              - set(attributes["payment.card.bin"], attributes["http.response.header.x-payment-card-bin"][0]) where attributes["http.response.header.x-payment-card-bin"] != nil
+              - set(attributes["payment.card.bin"], attributes["http.response.header.x_payment_card_bin"][0]) where attributes["http.response.header.x_payment_card_bin"] != nil
+              - delete_matching_keys(attributes, "^http\\.response\\.header\\.x[-_]route.*")
+              - delete_matching_keys(attributes, "^http\\.response\\.header\\.x[-_]payment.*")
+      # Same as otel/collector-config.yaml: `source` = service name (service.name stays an indexed field)
+      # and a lowercase `severity` field for Log Observer Connect, derived from the severity text or
+      # number (Go's slog bridge sets only the number). Kubernetes events from the cluster receiver
+      # keep their own sourcetype and land in the same index.
+      transform/logs:
+        error_mode: ignore
+        log_statements:
+          - context: log
+            statements:
+              - set(resource.attributes["com.splunk.source"], resource.attributes["service.name"]) where resource.attributes["service.name"] != nil
+              - set(attributes["severity"], ConvertCase(severity_text, "lower")) where severity_text != nil and severity_text != ""
+              - set(attributes["severity"], "debug") where attributes["severity"] == nil and severity_number >= 1 and severity_number <= 8
+              - set(attributes["severity"], "info") where attributes["severity"] == nil and severity_number >= 9 and severity_number <= 12
+              - set(attributes["severity"], "warn") where attributes["severity"] == nil and severity_number >= 13 and severity_number <= 16
+              - set(attributes["severity"], "error") where attributes["severity"] == nil and severity_number >= 17 and severity_number <= 20
+              - set(attributes["severity"], "critical") where attributes["severity"] == nil and severity_number >= 21
+              - set(attributes["severity"], "warn") where attributes["severity"] == "warning"
+              - set(attributes["severity"], "error") where attributes["severity"] == "severe" or attributes["severity"] == "err"
+              - set(attributes["severity"], "critical") where attributes["severity"] == "fatal"
+              - set(attributes["severity"], "info") where attributes["severity"] == "information" or attributes["severity"] == "info2" or attributes["severity"] == "info3" or attributes["severity"] == "info4"
+              - set(attributes["severity"], "debug") where attributes["severity"] == "fine" or attributes["severity"] == "finer" or attributes["severity"] == "finest" or attributes["severity"] == "trace" or attributes["severity"] == "debug2" or attributes["severity"] == "debug3" or attributes["severity"] == "debug4"
+    service:
+      pipelines:
+        traces:
+          # chart 0.161 names (k8s_attributes, resource_detection) + the two workshop processors
+          processors:
+            - memory_limiter
+            - k8s_attributes
+            - filter/drop-chaos-polling
+            - transform/router-headers
+            - batch
+            - resource_detection
+            - resource
+            - resource/add_environment
+        logs:
+          # the chart's default logs pipeline + transform/logs before the batch
+          processors:
+            - memory_limiter
+            - k8s_attributes
+            - filter/logs
+            - transform/logs
+            - batch
+            - resource_detection
+            - resource
+            - resource/logs
+            - resource/add_environment

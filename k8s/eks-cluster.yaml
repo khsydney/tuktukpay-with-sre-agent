@@ -1,0 +1,43 @@
+# EKS (Amazon Elastic Kubernetes Service) cluster for the workshop, used by k8s/eks-up.sh (make eks-up).
+# Your AWS account, ap-southeast-1, the AWS profile in EKS_AWS_PROFILE (an IAM user whose policy
+# its inline policy only allows IAM roles named eksctl-tuktukpay-*, which eksctl derives from the cluster name).
+#
+# Two arm64 (Graviton) nodes: the Mac builds arm64 images, so docker compose output runs as is.
+# Nodes sit in private subnets behind one NAT gateway, so every outbound call (HEC (HTTP Event Collector)
+# to Splunk Cloud included) leaves from one fixed IP; add that IP to the Splunk Cloud HEC allow list.
+# About USD 0.60/hour while it exists; tear down with k8s/eks-down.sh (make eks-down).
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: tuktukpay-eks
+  region: ap-southeast-1
+  version: "1.37"
+  tags:
+    Project: tuktukpay
+vpc:
+  nat:
+    gateway: Single
+accessConfig:
+  authenticationMode: API_AND_CONFIG_MAP
+managedNodeGroups:
+  - name: ng-arm
+    instanceType: m7g.xlarge
+    amiFamily: AmazonLinux2023
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 3
+    volumeSize: 40
+    privateNetworking: true
+    labels: {workload: tuktukpay}
+    tags:
+      Project: tuktukpay
+    # Crash-loop back-off capped at 30s, as on kind (k8s/kind-config.yaml): after Acts 6/7 the pod
+    # comes back within ~30s of the flag going off instead of up to 5 min. The AL2023 kubelet reads
+    # drop-ins from config.json.d; check on a node with
+    #   kubectl get --raw /api/v1/nodes/<node>/proxy/configz | grep -o '"crashLoopBackOff":{[^}]*}'
+    preBootstrapCommands:
+      - |
+        mkdir -p /etc/kubernetes/kubelet/config.json.d
+        cat > /etc/kubernetes/kubelet/config.json.d/90-crashloop.conf <<'EOF'
+        {"apiVersion":"kubelet.config.k8s.io/v1beta1","kind":"KubeletConfiguration","crashLoopBackOff":{"maxContainerRestartPeriod":"30s"}}
+        EOF

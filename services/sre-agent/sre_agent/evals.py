@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import tempfile
 import time
 
@@ -182,6 +183,39 @@ def score(act: Act, inv: dict, keep: dict) -> dict:
             "evidence": evidence, "pass": rc_ok and action_ok}
 
 
+GUESS_WORDS = re.compile(r"\b(probably|possibly|perhaps|maybe|might|likely|indicative|may have|could be|seems? to|appears? to)\b", re.I)
+NUMBER_TOKEN = re.compile(r"[\w.:,/-]*\d[\w.:,/-]*")                                        # every run of characters that holds a digit
+QUANTITY = re.compile(r"^\d[\d,]*(?:\.\d+)?(?:ms|s|sec|min|m|h|%|x|k|kb|mb|gb)?$", re.I)   # 1,170 · 2.5s · 15m · 5%; not 14:32, v3, p90 or a date
+VERIFY_WORDS = re.compile(r"\b(verify|verif\w+|confirm\w*|check(?:s|ed|ing)?|watch(?:es|ed|ing)?)\b", re.I)   # whole words: not checkout-api
+
+
+def quantities(text: str) -> int:
+    """How many measured numbers a sentence holds. Clock times, dates and names such as v3 or p90 do not count; it
+    cannot tell an identifier written as a bare number (a card range) from a count."""
+    return sum(1 for tok in NUMBER_TOKEN.findall(str(text or "")) if QUANTITY.match(tok.strip(".,:;/-")))
+
+
+def quality(inv: dict, fault: bool | None = None) -> dict:
+    """Write-up score, beside the PASS/FAIL of `score` and never part of it: yes/no checks on the conclusion a reader
+    sees. Three of them only make sense when an action is proposed (a fault was found); the other two always apply.
+    Deterministic on purpose (no judge model): it catches a flat tree, a mechanism without numbers, a guessed impact,
+    next steps without a verify step and a long or hedged title."""
+    inv = inv or {}
+    if fault is None:   # no ground truth given: go by the answer itself (a replayed act passes its own, so a missed fault scores low)
+        fault = (inv.get("proposed_action") or {}).get("type", "inconclusive") not in ("no_action", "inconclusive")
+    title, steps = str(inv.get("title") or ""), [str(x) for x in inv.get("next_steps") or []]
+    checks: list[tuple[str, bool]] = []
+    if fault:
+        impact = str(inv.get("impact") or "")
+        checks += [("tree depth", any(int(n.get("depth") or 1) >= 2 and n.get("status") in ("validated", "invalidated", "inconclusive")
+                                      for n in inv.get("tree") or [] if isinstance(n, dict))),
+                   ("mechanism numbers", quantities(inv.get("mechanism")) >= 2),
+                   ("impact", quantities(impact) >= 1 and not GUESS_WORDS.search(impact))]
+    checks += [("next steps", len(steps) >= 2 and bool(VERIFY_WORDS.search(steps[-1]))),
+               ("title", 0 < len(title.split()) <= 12 and not GUESS_WORDS.search(title))]
+    return {"score": sum(ok for _, ok in checks), "of": len(checks), "failed": [name for name, ok in checks if not ok]}
+
+
 def run_case(name: str, provider: str, fixtures: pathlib.Path = FIXTURES) -> dict:
     from .recorder import ReplayMCP, ReplaySplunk
     fx = load_fixture(name, fixtures)
@@ -194,6 +228,7 @@ def run_case(name: str, provider: str, fixtures: pathlib.Path = FIXTURES) -> dic
     except Exception as e:  # noqa: BLE001 — one broken case must not stop the table
         inv, st, keep, err = {}, {}, {}, f"{type(e).__name__}: {e}"[:200]
     row = score(act, inv, keep)
+    row["quality"] = quality(inv, fault=any(a not in ("no_action", "inconclusive") for a in expected_actions(act)))
     row.update({"model": st.get("model") or provider, "provider": st.get("provider") or provider, "cost_usd": round(st.get("cost_usd") or 0, 4),
                 "seconds": round(time.time() - t0, 1), "misses": len(mcp.misses) + len(splunk.misses),
                 "miss_detail": (mcp.misses + splunk.misses)[:20], "error": err, "recorded_at": fx.get("recorded_at")})
@@ -206,18 +241,26 @@ def available(fixtures: pathlib.Path = FIXTURES) -> list[str]:
     return [n for n in EVAL_CASES if (fixtures / f"{n}.json").exists()]
 
 
+def _write_up(q: dict | None) -> str:
+    if not q:
+        return "-"
+    return f"{q['score']}/{q['of']}" + (f" ({', '.join(q['failed'])})" if q["failed"] else "")
+
+
 def table(rows: list[dict]) -> str:
-    head = "| case | expected root cause | got | expected action | got | evidence | misses | model | cost | s | result |\n|---|---|---|---|---|---|---|---|---|---|---|"
+    head = "| case | expected root cause | got | expected action | got | evidence | misses | model | cost | s | write-up | result |\n|---|---|---|---|---|---|---|---|---|---|---|---|"
     lines = [head]
     for r in rows:
         act = EVAL_CASES[r["case"]]
         lines.append(f"| {r['case']} | {' / '.join(act.root_cause_services)} | {r['root_cause']}{'' if r['rc_ok'] else ' ✗'} | "
                      f"{' or '.join(sorted(accepted_actions(act)))} | {r['action']}{'' if r['action_ok'] else ' ✗'} | {r['evidence']} | "
-                     f"{r['misses']} | {str(r['model']).replace('global.anthropic.', '')} | ${r['cost_usd']:.2f} | {r['seconds']} | "
+                     f"{r['misses']} | {str(r['model']).replace('global.anthropic.', '')} | ${r['cost_usd']:.2f} | {r['seconds']} | {_write_up(r.get('quality'))} | "
                      f"{'PASS' if r['pass'] else 'FAIL'}{' (' + r['error'] + ')' if r.get('error') else ''} |")
     n, ok = len(rows), sum(r["pass"] for r in rows)
     cost = sum(r["cost_usd"] for r in rows)
-    lines.append(f"\n{ok}/{n} PASS (scenario regression, not accuracy) · total ${cost:.2f}")
+    scored = [r["quality"] for r in rows if r.get("quality")]
+    write_up = f" · write-up {sum(q['score'] for q in scored)}/{sum(q['of'] for q in scored)}" if scored else ""
+    lines.append(f"\n{ok}/{n} PASS (scenario regression, not accuracy){write_up} · total ${cost:.2f}")
     return "\n".join(lines)
 
 

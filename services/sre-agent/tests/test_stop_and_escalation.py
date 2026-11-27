@@ -133,6 +133,7 @@ def test_failed_escalation_keeps_first_answer(sandbox, monkeypatch):
     assert c["investigation"]["narrative"] == "first answer" and "failed" in c["investigation"]["escalation_error"]
     assert c["state"] == "inconclusive"   # the first answer decides, not an error escalation
     assert [e for e in sandbox if e["event"] == "sre.case.escalation_failed"]
+    assert [e for e in sandbox if e["event"] == "sre.tree.reset"]          # the failed re-run's half-built tree is cleared from the page
     inv_ev = [e for e in sandbox if e["event"] == "sre.case.investigated"][0]
     assert "claude-opus-5-5" in inv_ev["escalation_error"]
 
@@ -229,3 +230,43 @@ def test_stream_loads_stored_result_for_a_case_from_before_this_session(sandbox,
         assert first[1]["event"] == "approval.decided"
     finally:
         srv.shutdown()
+
+
+def test_investigated_event_carries_the_conclusion_and_the_tree(sandbox):
+    c = cs.new_case("tuktukpay-demo", INC, source="console")
+    c = engine.run_investigation(c, MCP(), Splunk(), "mock", "ask")
+    ev = [e for e in sandbox if e["event"] == "sre.case.investigated"][0]
+    inv = c["investigation"]
+    assert ev["title"] == inv["title"] and ev["mechanism"] == inv["mechanism"] and ev["next_steps"] == inv["next_steps"]
+    assert "timeline" not in ev and ev["tree_gap"] == ""
+    assert [n["id"] for n in ev["tree"]] == [n["id"] for n in inv["tree"]] and ev["tree"][0]["status"] == "validated"
+    order = [e["event"] for e in sandbox if e["event"].startswith("sre.tree.")]
+    assert order[0] == "sre.tree.reset" and "sre.tree.branch" in order and "sre.tree.verdict" in order
+
+
+def test_every_service_row_reaches_the_case_and_the_evidence_event(sandbox):
+    """The console's service map needs every service's numbers, not the two rows that fit the 700-character preview."""
+    rows = [{"service": f"svc-{i}", "health": "ok", "requests": 1000 + i, "errors": i, "error_rate": i / (1000 + i),
+             "p50_ms": 10.123456, "p90_ms": 20.5, "p99_ms": 30.0, "link": "https://example.invalid/x"} for i in range(12)]
+
+    class Many(MCP):
+        def services_summary(self, *a, **k):
+            return rows
+
+    c = cs.new_case("tuktukpay-demo", INC, source="console")
+    c = engine.run_investigation(c, Many(), Splunk(), "mock", "ask")
+    ev = [e for e in sandbox if e["event"] == "sre.rca.evidence" and e["section"] == "services_summary"][0]
+    assert [r["service"] for r in ev["services"]] == [f"svc-{i}" for i in range(12)]
+    assert ev["services"][3] == {"service": "svc-3", "requests": 1003, "errors": 3, "error_rate": round(3 / 1003, 5), "p50_ms": 10.1, "p90_ms": 20.5, "p99_ms": 30.0}
+    assert cs.load(c["id"])["services"] == ev["services"]   # a stored case shows the same numbers later
+
+
+def test_a_failed_services_summary_leaves_no_service_rows(sandbox):
+    class Down(MCP):
+        def services_summary(self, *a, **k):
+            raise RuntimeError("gateway down")
+
+    c = cs.new_case("tuktukpay-demo", INC, source="console")
+    c = engine.run_investigation(c, Down(), Splunk(), "mock", "ask")
+    assert "services" not in cs.load(c["id"])
+    assert not [e for e in sandbox if e["event"] == "sre.rca.evidence" and e.get("services")]

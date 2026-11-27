@@ -40,6 +40,37 @@ Every record the agent writes (`sre.case.*`, `sre.llm.call`, `remediation.*`, `a
 stderr; set `SRE_AUDIT_HEC_URL` / `SRE_AUDIT_HEC_TOKEN` to send the same records to a dedicated index
 (`tuktukpay_agent_audit`). Cases are JSON files under `SRE_AGENT_STATE_DIR` (default `~/.local/share/tuktukpay-sre-agent`).
 
+## Hypothesis ledger (single loop, live tree)
+
+Since 27 Nov 2026 the default loop keeps a ledger (`sre_agent/ledger.py`). The model records each hypothesis with
+`hypothesis_open` and its result with `hypothesis_verdict` while it works, so the tree is drawn live (events
+`sre.tree.reset`, `sre.tree.branch`, `sre.tree.verdict`) and goes up to three levels deep without sub-agents.
+
+- **Code checks every validated verdict and answers at once:** its evidence ids must include a metric-or-trace signal
+  and a log signal, and a deciding signal last seen more than `SRE_AGENT_STALE_MIN` minutes ago is treated as left over
+  from an earlier event. The model can add the missing evidence and record the verdict again.
+- **One level of "why":** when an action is proposed, at least one narrower hypothesis under the validated one needs a
+  verdict (which partner, host, card range, version, setting or change). A missing ledger or level gets one corrective
+  round; what is still missing is kept on the case as `tree_gap`.
+- **Conclusion fields:** the answer carries `title`, `mechanism` and `next_steps` beside the earlier fields, and
+  `tree` with every node.
+- Ledger calls do not use the tool budget. A narrower hypothesis left inconclusive does not start the re-run with the
+  stronger model; a top-level one still does.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `SRE_AGENT_LEDGER` | `on` | `off` brings back the plain loop of before 27 Nov 2026 |
+| `SRE_AGENT_LEDGER_NODES` | `12` | most hypotheses per case |
+| `SRE_AGENT_STALE_MIN` | `5` | minutes after which a deciding signal counts as left over |
+| `SRE_AGENT_MAX_INPUT_TOKENS` | `300000` | prompt tokens per case, cached reads included (60000 before the ledger) |
+| `SRE_AGENT_MARKERS` | `hide` | `show` lets the model read config-change events (`config.changed`) and name the change that triggered a fault; the evaluation always hides them |
+
+Two limits of the model API (application programming interface), found on 27 Nov 2026: the strict tools and the answer
+schema compile into one grammar, and the request is refused when it grows too large, so `metric_series`,
+`spl_template` and the two ledger tools are not strict (code validates their arguments) and the loop retries once with
+no strict tool if the refusal comes back; and the growing conversation is cached with a top-level `cache_control`,
+which only the Anthropic API accepts (not Amazon Bedrock).
+
 ## Alert correlation along the service map
 
 Two levels, both computed by code (no extra agent; the investigator only judges the result):
@@ -77,7 +108,7 @@ A signal naming only services in `SRE_AGENT_EVIDENCE_ONLY` (default `shopping-ag
 
 ## Agent console (war-room view)
 
-Layout (1 Nov 2026): alerts and cases on the left (cases awaiting approval first); centre tabs **Hypothesis tree** (top-down; statuses validated, ruled out, inconclusive, not tested; the code checks and evidence of a node on click; one level for the default `loop` method, full depth with `SRE_AGENT_METHOD=tree`), **Topology** (service map from `/api/topology`, cached, never calls the gateway; status only from the case's own data) and **Agent trace** (the live steps and raw MCP (Model Context Protocol) calls); the brief on the right with the decision first. The page follows the war-room design (colour codes of https://www.splunk.com/). `?facilitator=1` shows the injected faults, hidden by default because the flag names give the answer away. The 👍/👎 under the brief writes `sre.case.feedback` to the audit trail.
+Layout (1 Nov 2026): alerts and cases on the left (cases awaiting approval first); centre tabs **Hypothesis tree** (since 27 Nov 2026 a canvas you can drag and zoom, drawn live from the ledger: alert on top, hypotheses with status researching, verified, ruled out, inconclusive or not tested, then a Conclusion and a Next steps node; while a case runs the view follows the hypothesis being worked on, and a drag or scroll hands the view to you; a finished case opens on the path to the root cause; the code checks and evidence of a node on click), **Topology** (service map from `/api/topology`, cached, never calls the gateway, drawn as a tree from the top down: callers above, what they call below; one box per service with a picture, its role, its error rate and p90 (90th percentile) latency from the services summary the agent collected, and a status that comes only from the case's own data; the path from the alerting service to the root cause is highlighted; a click opens the service's card beside the box, and the map does not move) and **Agent trace** (the run as steps on a rail: who acted, what happened, how long; each result on its request with the raw MCP (Model Context Protocol) calls nested under it, which can be hidden; it follows new steps only while you are at the bottom); the brief on the right with the decision first. The page follows the war-room design (colour codes of https://www.splunk.com/). `?facilitator=1` shows the injected faults, hidden by default because the flag names give the answer away. The 👍/👎 under the brief writes `sre.case.feedback` to the audit trail.
 
 
 The brief redraws itself when a case changes (merge, alert added, close, mitigated), and the sidebar refreshes every
@@ -160,6 +191,11 @@ not the alerting payment-router) **and** the proposed action is in `acts.expecte
 the fixture could not serve (`misses`: free-form SPL or metric arguments the recording never saw; `-v` lists them).
 A mock PASS proves the harness, not the reasoning (its rules encode the answers). Scenario regression results, not
 accuracy figures.
+
+The `write-up` column is a separate score that never changes PASS or FAIL (`evals.quality`): yes/no checks on what a
+reader sees. Three apply when an action is proposed (the tree has a tested second level; the mechanism quotes two
+numbers; the impact has a number and no guess words) and two always (the next steps end with a verify step; the title
+has at most 12 words and no guess words). Failed checks are listed in brackets.
 
 ## Honest limits of the prototype
 

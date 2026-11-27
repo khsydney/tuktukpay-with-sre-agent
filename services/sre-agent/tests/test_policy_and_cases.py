@@ -151,3 +151,21 @@ def test_console_sweeps_abandoned_and_reuses_active_case(tmp_path, monkeypatch):
     fresh = cs.new_case("tuktukpay-demo", [{"detector": "d", "incident_id": "I2"}], source="console")
     assert console._sweep_abandoned() == [old["id"]] and cs.load(old["id"])["state"] == "closed"
     assert console._active_case_for("I2") == fresh["id"] and console._active_case_for("I1") is None
+
+
+def test_mock_investigator_fills_the_conclusion_fields_and_a_tree():
+    bundle = "### spl_events_by_service\n{'results': [{'source':'payment-router','event':'acquirer.timeout','count':'2114'},{'event':'route.failover'}]}"
+    inv = investigate_mock({"id": "C-x"}, bundle, ToolSet(mcp=None, splunk=FakeSplunk())).investigation
+    assert "scripted mock" in inv["title"] and inv["mechanism"] and "timeline" not in inv and len(inv["next_steps"]) == 2
+    assert [(n["id"], n["status"], n["independent"]) for n in inv["tree"]] == [("H1", "validated", False)]
+    assert inv["tree"][0]["checks"][-1].startswith("corroborated") and "H1" in inv["tree_text"]
+    quiet = investigate_mock({"id": "C-z"}, "route.authorised 21116", ToolSet(mcp=None, splunk=FakeSplunk())).investigation
+    assert [(n["id"], n["status"]) for n in quiet["tree"]] == [("H1", "inconclusive")] and quiet["next_steps"]
+
+
+def test_mock_survives_a_ledger_smaller_than_its_matches(monkeypatch):
+    import sre_agent.ledger as ledger_mod
+    monkeypatch.setattr(ledger_mod, "MAX_NODES", 1)
+    bundle = "acquirer.timeout route.failover risk.inference_slow db.pool.wait memory.pressure"
+    inv = investigate_mock({"id": "C-m"}, bundle, ToolSet(mcp=None, splunk=FakeSplunk())).investigation
+    assert len(inv["tree"]) == 1 and len(inv["hypotheses"]) == 4 and inv["proposed_action"]["type"].startswith("chaos.flag_off:")

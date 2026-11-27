@@ -65,9 +65,13 @@ def run_investigation(c: dict, mcp, splunk, provider: str | None, mode: str, mar
             keep["bundle"] = bundle.as_text()   # in memory only, for follow-up questions in the console
             keep["sections"] = dict(bundle.sections)   # and for the eval scorer (evidence ids -> text)
         from .tools import preview_envelope
+        services = getattr(bundle, "services", None) or []
+        if services:
+            c["services"] = services   # kept on the case so its service map shows the same numbers when it is opened later
         for name, text in bundle.sections.items():
             pv = preview_envelope(text) if name != "collector_errors" else {"summary": "errors", "preview": text[:700]}
-            emit("sre.rca.evidence", case_id=c["id"], section=name, summary=pv["summary"], preview=pv["preview"], chars=len(text))
+            more = {"services": services} if name == "services_summary" and services else {}
+            emit("sre.rca.evidence", case_id=c["id"], section=name, summary=pv["summary"], preview=pv["preview"], chars=len(text), **more)
         toolset = ToolSet(mcp, splunk, marker_mode)
         res = investigate(c, bundle.as_text(), toolset, provider)
         from .investigator import ESCALATE_MODEL, should_escalate
@@ -90,6 +94,7 @@ def run_investigation(c: dict, mcp, splunk, provider: str | None, mode: str, mar
             except Exception as e:  # noqa: BLE001 — a failed re-run must not throw away the first answer
                 err = f"{type(e).__name__}: {e}"[:300]
                 emit("sre.case.escalation_failed", case_id=c["id"], to_model=ESCALATE_MODEL, error=err, kept_model=first.stats.model)
+                emit("sre.tree.reset", case_id=c["id"])   # drop the failed re-run's half-built tree; the kept answer's tree follows in sre.case.investigated
                 res, toolset = first, first_toolset
                 res.investigation["escalation_error"] = f"re-run with {ESCALATE_MODEL} failed ({err}); showing the first answer ({why})"
                 res.stats.provider = f"{res.stats.provider} (escalation to {ESCALATE_MODEL} failed: {type(e).__name__})"
@@ -128,6 +133,13 @@ def run_investigation(c: dict, mcp, splunk, provider: str | None, mode: str, mar
              started_at=str(res.investigation.get("started_at", ""))[:40],
              cause_chain=[str(x)[:240] for x in (res.investigation.get("cause_chain") or [])][:8],
              tree_text=str(res.investigation.get("tree_text", ""))[:4000],
+             # conclusion card and hypothesis tree (27 Nov 2026): drawn by the console; a page that connects late needs the tree here
+             title=str(res.investigation.get("title", ""))[:160],
+             mechanism=str(res.investigation.get("mechanism", ""))[:600],
+             next_steps=[str(x)[:300] for x in (res.investigation.get("next_steps") or [])][:6],
+             tree=[{k: (v[:600] if isinstance(v, str) else v) for k, v in n.items() if k != "test_plan"}
+                   for n in (res.investigation.get("tree") or []) if isinstance(n, dict)][:32],
+             tree_gap=str(res.investigation.get("tree_gap") or "")[:300],
              evidence=[{"signal": str(e.get("signal", ""))[:10], "finding": str(e.get("finding", ""))[:300], "evidence_id": str(e.get("evidence_id", ""))[:80]}
                        for e in (res.investigation.get("evidence") or []) if isinstance(e, dict)][:10],
              ruled_out=[str(x)[:240] for x in (res.investigation.get("ruled_out") or [])][:8],

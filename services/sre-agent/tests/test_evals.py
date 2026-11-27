@@ -122,3 +122,52 @@ def test_committed_fixtures_hold_nothing_private(path):
     assert recorder.leaks(text) == [], f"{path.name}: {recorder.leaks(text)}"
     fx = json.loads(text)
     assert fx["case"] in EVAL_CASES and fx["calls"]
+
+
+GOOD = {"proposed_action": {"type": "chaos.flag_off:acquirer_kbank_timeout"},
+        "title": "acq-kbank hang on one card range failed card payments",
+        "mechanism": "acq-kbank holds authorisations for 3.2 s, longer than the router's 2.5 s limit.",
+        "impact": "573 authorisations timed out in 15 min and 790 payments were declined.",
+        "next_steps": ["Route the card range off acq-kbank", "Verify that acquirer.timeout events return to zero"],
+        "tree": [{"id": "H1", "depth": 1, "status": "validated"}, {"id": "H1.1", "depth": 2, "status": "validated"}]}
+
+
+def test_write_up_quality_counts_five_checks_on_a_fault():
+    assert evals.quality(GOOD) == {"score": 5, "of": 5, "failed": []}
+    weak = dict(GOOD, title="It is probably the acquirer that is " + "really " * 8 + "slow", mechanism="The acquirer is slow.",
+                impact="About 573 timeouts, probably more; the amount is indicative.",
+                next_steps=["Route the card range off acq-kbank"], tree=[{"id": "H1", "depth": 1, "status": "validated"}, {"id": "H1.1", "depth": 2, "status": "not tested"}])
+    q = evals.quality(weak)
+    assert q["score"] == 0 and q["of"] == 5 and q["failed"] == ["tree depth", "mechanism numbers", "impact", "next steps", "title"]
+
+
+def test_write_up_quality_skips_fault_checks_when_no_action_is_proposed():
+    quiet = {"proposed_action": {"type": "no_action"}, "title": "Agent mandate blocks are governance working as designed",
+             "next_steps": ["No action", "Confirm the blocks follow the mandate limits"], "mechanism": "", "impact": "none", "tree": []}
+    assert evals.quality(quiet) == {"score": 2, "of": 2, "failed": []}
+    assert evals.quality({}) == {"score": 0, "of": 2, "failed": ["next steps", "title"]}     # an old case without the fields
+
+
+def test_table_has_a_write_up_column_that_never_changes_the_result():
+    row = {"case": "act1", "root_cause": "acquirer-sim", "rc_ok": True, "action": "chaos.flag_off:acquirer_kbank_timeout", "action_ok": True, "evidence": "yes",
+           "pass": True, "model": "m", "cost_usd": 0.1, "seconds": 20, "misses": 0, "quality": {"score": 4, "of": 5, "failed": ["impact"]}}
+    text = evals.table([row, {k: v for k, v in row.items() if k != "quality"}])
+    assert "| write-up |" in text and "| 4/5 (impact) |" in text and text.count("PASS") == 3 and "| - |" in text
+    assert "write-up 4/5" in text.splitlines()[-1]                      # summed over the rows that have a score
+
+
+def test_write_up_quality_is_not_fooled_by_identifiers_times_or_word_prefixes():
+    q = lambda **over: evals.quality(dict(GOOD, **over))["failed"]
+    assert "next steps" in q(next_steps=["Route the card range off acq-kbank", "Restart checkout-api"])        # "check" inside a service name
+    assert "next steps" in q(next_steps=["Route the card range off acq-kbank", "Page the monitoring team"])
+    assert "mechanism numbers" in q(mechanism="The acquirer became slow at 14:32 UTC.")                         # a clock time is one fact, not two numbers
+    assert "mechanism numbers" in q(mechanism="The v3 model raised p90 latency.")                               # names, not measurements
+    assert "mechanism numbers" in q(mechanism="1,234,567 requests queued.")                                     # one number
+    assert "impact" in q(impact="Roughly 500 payments may have failed.")
+    assert "impact" not in q(impact="acquirer.timeout appears 573 times in 15 min.")                            # "appears" is not a guess here
+
+
+def test_write_up_quality_scores_a_missed_fault_on_all_five_checks():
+    missed = {"proposed_action": {"type": "inconclusive"}, "title": "No clear cause found", "next_steps": ["Look again", "Verify the alert clears"]}
+    assert evals.quality(missed) == {"score": 2, "of": 2, "failed": []}                                         # judged alone, it looks fine
+    assert evals.quality(missed, fault=True) == {"score": 2, "of": 5, "failed": ["tree depth", "mechanism numbers", "impact"]}

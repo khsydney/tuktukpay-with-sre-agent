@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 from . import catalogue
 from .evidence import ENV, SPL_TEMPLATES, compact_trace, markers_shown, render_template
+from .ledger import LEDGER_TOOL_NAMES, LEDGER_TOOLS
 from .tools import SPLRejected, clip, guard_spl, guard_window, scrub_rows, summarise_series
 
 MAX_TOOL_CALLS = int(os.getenv("SRE_AGENT_MAX_TOOL_CALLS", "15"))
@@ -61,14 +62,18 @@ class ToolSet:
     tainted: list[str] = field(default_factory=list)
     log: list[dict] = field(default_factory=list)   # transcript of tool calls for evidence-id resolution
     outputs: dict = field(default_factory=dict)      # tool_use id -> result text (memory only; read by the eval scorer)
+    ledger: object = None                            # ledger.Ledger for the single-loop investigator; None = no ledger tools
 
     def __post_init__(self):
         self.marker_mode = markers_shown(self.marker_mode)
 
     def schemas(self) -> list[dict]:
-        return sorted(TOOL_SCHEMAS, key=lambda t: t["name"])  # deterministic order (prompt caching)
+        extra = LEDGER_TOOLS if self.ledger is not None else []
+        return sorted(TOOL_SCHEMAS + extra, key=lambda t: t["name"])  # deterministic order (prompt caching)
 
     def dispatch(self, call_id: str, name: str, args: dict) -> str:
+        if self.ledger is not None and name in LEDGER_TOOL_NAMES:   # bookkeeping, not a query: no budget, not in the evidence log
+            return self.ledger.handle(name, args)
         self.calls += 1
         if self.calls > MAX_TOOL_CALLS:
             return self._err(call_id, name, args, f"tool budget exhausted ({MAX_TOOL_CALLS} calls): conclude now")
@@ -124,8 +129,11 @@ class ToolSet:
             metric = str(a["metric"])
             if not METRIC_RE.match(metric):
                 raise ValueError("metric must start with tuktukpay., service.request., k8s. or container.")
-            by = [d for d in (a.get("by") or []) if d in DIMENSIONS]
-            rollup = a.get("rollup") if a.get("rollup") in ROLLUPS else "sum"
+            by, rollup = a.get("by"), a.get("rollup")   # not a strict tool since 27 Nov 2026: say what is wrong instead of running another query
+            if not isinstance(by, list) or any(d not in DIMENSIONS for d in by):
+                raise ValueError(f"by must be a list (it may be empty) of dimensions from: {', '.join(DIMENSIONS)}")
+            if rollup not in ROLLUPS:
+                raise ValueError(f"rollup must be one of: {', '.join(ROLLUPS)}")
             res = int(a.get("resolution_ms", 60000))
             if res not in RESOLUTIONS:
                 raise ValueError(f"resolution_ms must be one of {RESOLUTIONS}")

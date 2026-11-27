@@ -227,7 +227,10 @@ def _start_investigation(incidents: list[dict], force: bool = False) -> str:
 
 
 def _context(c: dict) -> str:
-    return json.dumps({"incidents": c.get("incidents"), "investigation": c.get("investigation"), "decision": {k: (c.get("decision") or {}).get(k) for k in ("action", "requirement", "reasons", "real_world")},
+    # without the node list: tree_text says the same in a few lines, and the full tree pushed the evidence bundle out
+    # of the 24,000 characters a follow-up question may carry
+    inv = {k: v for k, v in (c.get("investigation") or {}).items() if k != "tree"}
+    return json.dumps({"incidents": c.get("incidents"), "investigation": inv, "decision": {k: (c.get("decision") or {}).get(k) for k in ("action", "requirement", "reasons", "real_world")},
                        "state": c.get("state"), "tool_calls_made": [{k: t.get(k) for k in ("tool", "args", "ok")} for t in (c.get("transcript") or [])][:20]},
                       default=str) + "\n\nEvidence bundle:\n" + BUNDLES.get(c["id"], "(not in memory: the case was investigated outside this console session)")
 

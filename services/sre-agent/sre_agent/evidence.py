@@ -109,6 +109,7 @@ class Bundle:
     tainted: list[str] = field(default_factory=list)
     tool_calls: int = 0
     errors: list[str] = field(default_factory=list)
+    services: list[dict] = field(default_factory=list)   # every service's numbers, for the console's service map
 
     def add(self, name: str, tool: str, data, note: str = ""):
         env = clip(tool, data, note=note)
@@ -120,13 +121,31 @@ class Bundle:
         return "\n\n".join(f"### {k}\n{v}" for k, v in self.sections.items())
 
 
+def service_rows(rows) -> list[dict]:
+    """The services summary as short rows of numbers (no links, no health text): the console's service map shows them
+    in each box. The audit preview of the same section is cut at 700 characters, about two services."""
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if not isinstance(r, dict) or not r.get("service"):
+            continue
+        try:
+            out.append({"service": str(r["service"])[:80], "requests": int(r.get("requests") or 0), "errors": int(r.get("errors") or 0),
+                        "error_rate": round(float(r.get("error_rate") or 0), 5),
+                        **{k: round(float(r.get(k) or 0), 1) for k in ("p50_ms", "p90_ms", "p99_ms")}})
+        except (TypeError, ValueError, OverflowError):
+            continue   # a row with a value that is not a number is left out, never guessed
+    return out[:40]
+
+
 def collect(mcp, splunk, detector_names: list[str], window: str = "-15m", marker_mode: bool = True) -> Bundle:
     b = Bundle()
     marker_mode = markers_shown(marker_mode)
     svcs = affected_services(detector_names)
     _stop_point("evidence collection (services summary)")
     try:
-        b.add("services_summary", "o11y_get_apm_services_summary", mcp.services_summary(ENV, window))
+        rows = mcp.services_summary(ENV, window)
+        b.add("services_summary", "o11y_get_apm_services_summary", rows)
+        b.services = service_rows(rows)
     except Exception as e:  # noqa: BLE001
         b.errors.append(f"services_summary: {e}")
     _stop_point("evidence collection (payments by outcome)")
